@@ -1,4 +1,10 @@
-Infer access permissions from permissions array and enforce on data array. 
+Infer access permissions from permissions array and enforce on a data array. 
+
+# Summary
+
+For a quick-start to what this operator aims to achieve, jump [here](https://github.com/Paradigm4/secure_scan/blob/master/README.md#now-the-desired-behavior-of-secure_scan-operator). 
+
+For a full description of how to set up the environment, read on below. 
 
 # Setup
 
@@ -192,6 +198,36 @@ iquery --auth-file=/home/scidb/.scidb_todd_auth -aq "secure_scan($SECURE_NMSP.$D
 {1} 'study 1'
 {3} 'study 3'
 ````
+
+# Generalization
+
+## 1. Enforce one permissions array across multiple data arrays
+
+Above we enforced permissions for the dimension `dataset_id` in an array `secured.DATASET` using 
+permissions in `PERMISSIONS.dataset_id`.
+
+The permissions array will be reused to enforce permissions in other data arrays in the `secured`
+namespace e.g. arrays like:
+
+```sh
+VARIANT <reference_allele: string, ...>
+      [dataset_id, dataset_version, variantset_id, biosample_id, feature_id, variant_synth_id]
+RNAQUANTIFICATION <value:float> 
+      [dataset_id, dataset_version, rnaquantificationset_id, biosample_id, feature_id]
+```
+
+## 2. Enforce multiple permissions array into one data array
+
+(This one is lower priority, and is written here for descriptive purposes)
+
+If there is another permissions array
+
+```sh
+PERMISSIONS.dataset_version <access_allowed:bool>[user_id, dataset_version]
+```
+
+Then the `secure_scan` operator would enforce permissions for both dimensions in an array like
+`VARIANT` or `RNAQUANTIFICATION` above. 
 
 # Corner cases
 
