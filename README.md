@@ -153,7 +153,31 @@ iquery --auth-file=/home/scidb/.scidb_gary_auth -aq "scan($SECURE_NMSP.$DATA_ARR
 ## `secure_scan` operator
 
 This operator should infer user permissions from the PERMISSIONS.dataset_id array and only show those rows. 
-Something like below. 
+
+**RECAP**
+
+```sh
+iquery -aq "list('users')"
+# {No} name,id
+# {0} 'root',1
+# {1} 'Todd',2
+# {2} 'Gary',3
+
+iquery -aq "scan($PERMISSIONS_NMSP.$PERMISSIONS_ARRAY)"
+# {user_id,dataset_id} access_allowed
+# {2,2} true
+# {3,1} true
+# {3,3} true
+
+iquery -aq "scan($SECURE_NMSP.$DATA_ARRAY)"
+# {dataset_id} name
+# {0} 'study 0'
+# {1} 'study 1'
+# {2} 'study 2'
+# {3} 'study 3'
+```
+
+**Desired output**
 
 User 'Todd' has access to study 2 only
 
