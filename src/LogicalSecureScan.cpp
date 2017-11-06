@@ -128,7 +128,7 @@ public:
             SCIDB_ASSERT(resLock->getLockMode() == SystemCatalog::LockDesc::XCL);
         }
 
-        query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
+        query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
     }
 
     ArrayDesc inferSchema(std::vector< ArrayDesc> inputSchemas, std::shared_ptr< Query> query)
