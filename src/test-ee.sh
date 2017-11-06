@@ -12,37 +12,37 @@ set -o errexit
 
 function cleanup {
     ## Cleanup
-    iquery -A auth_root -anq "remove($NS_SEC.$DATASET)"  || true
-    iquery -A auth_root -anq "drop_namespace('$NS_SEC')" || true
-    iquery -A auth_root -anq "remove($NS_PER.$DATASET)"  || true
-    iquery -A auth_root -anq "drop_namespace('$NS_PER')" || true
-    iquery -A auth_root -anq "drop_user('todd')"         || true
-    iquery -A auth_root -anq "drop_user('gary')"         || true
-    rm auth_root auth_todd auth_gary test.expected test.out
+    iquery -A auth_admin -anq "remove($NS_SEC.$DATASET)"  || true
+    iquery -A auth_admin -anq "drop_namespace('$NS_SEC')" || true
+    iquery -A auth_admin -anq "remove($NS_PER.$DATASET)"  || true
+    iquery -A auth_admin -anq "drop_namespace('$NS_PER')" || true
+    iquery -A auth_admin -anq "drop_user('todd')"         || true
+    iquery -A auth_admin -anq "drop_user('gary')"         || true
+    rm auth_admin auth_todd auth_gary test.expected test.out
 }
 
 trap cleanup EXIT
 
 
-## Root Auth
-cat <<EOF > auth_root
+## Admin Auth
+cat <<EOF > auth_admin
 [security_password]
-user-name=root
+user-name=scidbadmin
 user-password=Paradigm4
 EOF
-chmod 0600 auth_root
+chmod 0600 auth_admin
 
 
 ## Init
-iquery -A auth_root -aq "load_library('secure_scan')"
-iquery -A auth_root -aq "create_namespace('$NS_SEC')"
-iquery -A auth_root -aq "
+iquery -A auth_admin -aq "load_library('secure_scan')"
+iquery -A auth_admin -aq "create_namespace('$NS_SEC')"
+iquery -A auth_admin -aq "
     store(
       build(<val:string>[$DIM=0:10], '$DATASET_' + string($DIM)),
       $NS_SEC.$DATASET)"
 
-iquery -A auth_root -aq "create_namespace('$NS_PER')"
-iquery -A auth_root -aq "
+iquery -A auth_admin -aq "create_namespace('$NS_PER')"
+iquery -A auth_admin -aq "
     create array $NS_PER.$DATASET <$FLAG:bool>[user_id,$DIM]"
 
 
@@ -54,7 +54,7 @@ user-password=bigsecret
 EOF
 chmod 0600 auth_todd
 PWHASH=$(echo -n "bigsecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
-iquery -A auth_root -aq "create_user('todd', '"$PWHASH"')"
+iquery -A auth_admin -aq "create_user('todd', '"$PWHASH"')"
 
 
 ## Gary Auth
@@ -65,7 +65,7 @@ user-password=topsecret
 EOF
 chmod 0600 auth_gary
 PWHASH=$(echo -n "topsecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
-iquery -A auth_root -aq "create_user('gary', '"$PWHASH"')"
+iquery -A auth_admin -aq "create_user('gary', '"$PWHASH"')"
 
 
 ## Verify Users
@@ -74,13 +74,13 @@ cat <<EOF > test.expected
 'todd'
 'gary'
 EOF
-iquery -A auth_root -o csv -aq "project(list('users'), name)" > test.out
+iquery -A auth_admin -o csv -aq "project(list('users'), name)" > test.out
 diff test.out test.expected
 
 
 # Gran Permissions
 function grant () {
-    iquery -A auth_root -aq "
+    iquery -A auth_admin -aq "
         insert(
             redimension(
                 apply(
@@ -111,7 +111,7 @@ true,'gary',3
 true,'gary',4
 true,'gary',5
 EOF
-iquery -A auth_root -o csv -aq "
+iquery -A auth_admin -o csv -aq "
     apply(
         cross_join(
             permissions.dataset as D,
