@@ -97,13 +97,31 @@ class PhysicalSecureScan: public  PhysicalOperator
     {
         SCIDB_ASSERT(!_arrayName.empty());
 
+        std::string arrayName;
+        std::string namespaceName;
+        query->getNamespaceArrayNames(_arrayName, namespaceName, arrayName);
+
+        // Get permissions array.
+        ArrayDesc permSchema;
+        SystemCatalog::GetArrayDescArgs args;
+        args.nsName = "permissions";
+        args.arrayName = arrayName;
+        args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
+        args.versionId = LAST_VERSION;
+        args.throwIfNotFound = true;
+        args.result = &permSchema;
+        SystemCatalog::getInstance()->getArrayDesc(args);
+
+        permSchema.setNamespaceName(args.nsName);
+        LOG4CXX_DEBUG(logger, "secured_scan::permSchema:" << permSchema);
+
+        std::shared_ptr<Array> permArray(DBArray::newDBArray(permSchema, query));
+        LOG4CXX_DEBUG(logger, "secured_scan::permArray:" << permArray);
+
+
         // Get worker lock for transient arrays.
         if (_schema.isTransient() && !query->isCoordinator())
         {
-            std::string arrayName;
-            std::string namespaceName;
-            query->getNamespaceArrayNames(_arrayName, namespaceName, arrayName);
-
             std::shared_ptr<LockDesc> lock(
                 make_shared<LockDesc>(
                     namespaceName,
