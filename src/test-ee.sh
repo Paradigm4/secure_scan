@@ -70,7 +70,7 @@ iquery -A auth_root -aq "create_user('gary', '"$PWHASH"')"
 
 ## Verify Users
 cat <<EOF > test.expected
-'root'
+'scidbadmin'
 'todd'
 'gary'
 EOF
