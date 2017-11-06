@@ -104,14 +104,14 @@ class PhysicalSecureScan: public  PhysicalOperator
             std::string namespaceName;
             query->getNamespaceArrayNames(_arrayName, namespaceName, arrayName);
 
-            std::shared_ptr<SystemCatalog::LockDesc> lock(
-                make_shared<SystemCatalog::LockDesc>(
+            std::shared_ptr<LockDesc> lock(
+                make_shared<LockDesc>(
                     namespaceName,
                     arrayName,
                     query->getQueryID(),
                     Cluster::getInstance()->getLocalInstanceId(),
-                    SystemCatalog::LockDesc::WORKER,
-                    SystemCatalog::LockDesc::XCL));
+                    LockDesc::WORKER,
+                    LockDesc::XCL));
 
             Query::Finalizer f = bind(&UpdateErrorHandler::releaseLock, lock,_1);
             query->pushFinalizer(f);

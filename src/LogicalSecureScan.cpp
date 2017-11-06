@@ -114,18 +114,18 @@ public:
 
         if (srcDesc.isTransient())
         {
-            std::shared_ptr<SystemCatalog::LockDesc> lock(
-                make_shared<SystemCatalog::LockDesc>(
+            std::shared_ptr<LockDesc> lock(
+                make_shared<LockDesc>(
                     args.nsName,
                     args.arrayName,
                     query->getQueryID(),
                     Cluster::getInstance()->getLocalInstanceId(),
-                    SystemCatalog::LockDesc::COORD,
-                    SystemCatalog::LockDesc::XCL));
-            std::shared_ptr<SystemCatalog::LockDesc> resLock(query->requestLock(lock));
+                    LockDesc::COORD,
+                    LockDesc::XCL));
+            std::shared_ptr<LockDesc> resLock(query->requestLock(lock));
 
             SCIDB_ASSERT(resLock);
-            SCIDB_ASSERT(resLock->getLockMode() == SystemCatalog::LockDesc::XCL);
+            SCIDB_ASSERT(resLock->getLockMode() == LockDesc::XCL);
         }
 
         query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
@@ -163,7 +163,6 @@ public:
             &&                       // and it's true
             evaluate(
                     ((std::shared_ptr<OperatorParamLogicalExpression>&)_parameters[1])->getExpression(),
-                    query,
                     TID_BOOL
                     ).getBool()
             )
