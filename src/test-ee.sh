@@ -34,15 +34,15 @@ chmod 0600 auth_root
 
 
 ## Init
-iquery -A auth_root -anq "load_library('secure_scan')"
-iquery -A auth_root -anq "create_namespace('$NS_SEC')"
-iquery -A auth_root -anq "
+iquery -A auth_root -aq "load_library('secure_scan')"
+iquery -A auth_root -aq "create_namespace('$NS_SEC')"
+iquery -A auth_root -aq "
     store(
       build(<val:string>[$DIM=0:10], '$DATASET_' + string($DIM)),
       $NS_SEC.$DATASET)"
 
-iquery -A auth_root -anq "create_namespace('$NS_PER')"
-iquery -A auth_root -anq "
+iquery -A auth_root -aq "create_namespace('$NS_PER')"
+iquery -A auth_root -aq "
     create array $NS_PER.$DATASET <$FLAG:bool>[user_id,$DIM]"
 
 
