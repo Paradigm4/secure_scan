@@ -34,6 +34,7 @@ chmod 0600 auth_root
 
 
 ## Init
+iquery -A auth_root -anq "load_library('secure_scan')"
 iquery -A auth_root -anq "create_namespace('$NS_SEC')"
 iquery -A auth_root -anq "
     store(

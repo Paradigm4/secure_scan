@@ -1,5 +1,6 @@
 #!/bin/bash
 
+iquery -anq "load_library('secure_scan')"        > /dev/null 2>&1
 iquery -anq "remove(zero_to_255)"                > /dev/null 2>&1
 iquery -anq "store( build( <val:string> [x=0:255,10,0],  string(x % 256) ), zero_to_255 )"  > /dev/null 2>&1
 
