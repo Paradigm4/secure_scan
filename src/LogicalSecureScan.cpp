@@ -88,8 +88,24 @@ public:
     {
         Placeholders res;
         res.push_back(END_OF_VARIES_PARAMS());
-        if (_parameters.size() == 1) {
+        // TOUNDO
+        // if (_parameters.size() == 1) {
+        //     res.push_back(PARAM_CONSTANT(TID_BOOL));
+        // }
+        switch (_parameters.size()) {
+          case 0:
+            assert(false);
+            break;
+          case 1:
             res.push_back(PARAM_CONSTANT(TID_BOOL));
+            break;
+          case 2:
+            res.push_back(PARAM_CONSTANT(TID_INT64));
+            break;
+          default:
+            // Translator will see END_OF_VARIES_PARAMS() and report the
+            // "too many arguments" error.
+           break;
         }
         return res;
     }
@@ -134,7 +150,9 @@ public:
     ArrayDesc inferSchema(std::vector< ArrayDesc> inputSchemas, std::shared_ptr< Query> query)
     {
         assert(inputSchemas.size() == 0);
-        assert(_parameters.size() == 1 || _parameters.size() == 2);
+        // TOUNDO
+        // assert(_parameters.size() == 1 || _parameters.size() == 2);
+        assert(_parameters.size() >= 1 && _parameters.size() <= 3);
         assert(_parameters[0]->getParamType() == PARAM_ARRAY_REF);
 
         std::shared_ptr<OperatorParamArrayReference>& arrayRef = (std::shared_ptr<OperatorParamArrayReference>&)_parameters[0];
