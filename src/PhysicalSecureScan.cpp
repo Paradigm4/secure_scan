@@ -125,6 +125,29 @@ class PhysicalSecureScan: public  PhysicalOperator
         std::shared_ptr<Array> permArray(DBArray::newDBArray(permSchema, query));
         LOG4CXX_DEBUG(logger, "secure_scan::permArray:" << permArray);
 
+        // Set cooridnates for permissions array
+        Dimensions const& permDims = permSchema.getDimensions();
+        size_t permNDims = permDims.size();
+        Coordinates permCoordStart(permNDims);
+        Coordinates permCoordEnd(permNDims);
+        for (size_t i = 0; i < permNDims; i++)
+        {
+            if (permDims[i].hasNameAndAlias("user_id"))
+            {
+                permCoordStart[i] = _userId;
+                permCoordEnd[i] = _userId;
+            }
+            else
+            {
+                permCoordStart[i] = permDims[i].getStartMin();
+                permCoordEnd[i] = permDims[i].getEndMax();
+            }
+            LOG4CXX_DEBUG(logger, "secure_scan::permCoordStart[" << i << "]:" << permCoordStart[i]);
+            LOG4CXX_DEBUG(logger, "secure_scan::permCoordEnd[" << i << "]:" << permCoordEnd[i]);
+        }
+
+
+
 
         // Get worker lock for transient arrays.
         if (_schema.isTransient() && !query->isCoordinator())
