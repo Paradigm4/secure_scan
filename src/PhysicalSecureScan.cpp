@@ -113,10 +113,10 @@ class PhysicalSecureScan: public  PhysicalOperator
         SystemCatalog::getInstance()->getArrayDesc(args);
 
         permSchema.setNamespaceName(args.nsName);
-        LOG4CXX_DEBUG(logger, "secured_scan::permSchema:" << permSchema);
+        LOG4CXX_DEBUG(logger, "secure_scan::permSchema:" << permSchema);
 
         std::shared_ptr<Array> permArray(DBArray::newDBArray(permSchema, query));
-        LOG4CXX_DEBUG(logger, "secured_scan::permArray:" << permArray);
+        LOG4CXX_DEBUG(logger, "secure_scan::permArray:" << permArray);
 
 
         // Get worker lock for transient arrays.
