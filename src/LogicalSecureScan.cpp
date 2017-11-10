@@ -118,6 +118,12 @@ public:
                 << "temporary arrays not supported";
         }
 
+        if (srcDesc.isAutochunked())
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "auto-chunked arrays not supported";
+        }
+
         query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
     }
 

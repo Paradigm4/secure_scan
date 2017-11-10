@@ -262,34 +262,21 @@ class PhysicalSecureScan: public  PhysicalOperator
                              _schema.getDistribution(),
                              _schema.getResidency());
 
-        if (_schema.isAutochunked())
-        {
-            // TODO
+        assert(_schema.getId() != 0);
+        assert(_schema.getUAId() != 0);
 
-            // Whether transient or not, scanning an array that is autochunked
-            // in the system catalog gets you a non-autochunked empty MemArray.
+        std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
-            Dense1MChunkEstimator::estimate(_schema.getDimensions());
-            return make_shared<MemArray>(_schema, query);
-        }
-        else
-        {
-            assert(_schema.getId() != 0);
-            assert(_schema.getUAId() != 0);
+        // Add CrossJoin
+        std::shared_ptr<Array> joinArray(
+            make_shared<CrossJoinArray>(joinSchema,
+                                        dataArray,
+                                        permArray,
+                                        dataJoinDims,
+                                        permJoinDims));
+        LOG4CXX_DEBUG(logger, "secure_scan::joinArray:" << joinArray);
 
-            std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
-
-            // Add CrossJoin
-            std::shared_ptr<Array> joinArray(
-                make_shared<CrossJoinArray>(joinSchema,
-                                            dataArray,
-                                            permBetweenArray,
-                                            dataJoinDims,
-                                            permJoinDims));
-            LOG4CXX_DEBUG(logger, "secure_scan::joinArray:" << joinArray);
-
-            return joinArray;
-        }
+        return joinArray;
     }
 
   private:
