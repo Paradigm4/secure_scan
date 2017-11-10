@@ -38,7 +38,7 @@ iquery -A auth_admin -aq "load_library('secure_scan')"
 iquery -A auth_admin -aq "create_namespace('$NS_SEC')"
 iquery -A auth_admin -aq "
     store(
-      build(<val:string>[$DIM=1:10:0:10], '$DATASET_' + string($DIM)),
+      build(<val:string>[$DIM=1:10:0:10], '${DATASET}_' + string($DIM)),
       $NS_SEC.$DATASET)"
 
 iquery -A auth_admin -aq "create_namespace('$NS_PER')"
@@ -142,22 +142,23 @@ diff test.out test.expected
 todd_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='todd'), id)")
 gary_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='gary'), id)")
 
+
 ## Use secure_scan
 iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset, $todd_id)" > test.out
 cat <<EOF > test.expected
 val
-'1'
-'2'
-'3'
+'dataset_1'
+'dataset_2'
+'dataset_3'
 EOF
 diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset, $gary_id)" > test.out
 cat <<EOF > test.expected
 val
-'3'
-'4'
-'5'
+'dataset_3'
+'dataset_4'
+'dataset_5'
 EOF
 diff test.out test.expected
 
