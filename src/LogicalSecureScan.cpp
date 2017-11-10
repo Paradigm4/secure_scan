@@ -114,18 +114,8 @@ public:
 
         if (srcDesc.isTransient())
         {
-            std::shared_ptr<LockDesc> lock(
-                make_shared<LockDesc>(
-                    args.nsName,
-                    args.arrayName,
-                    query->getQueryID(),
-                    Cluster::getInstance()->getLocalInstanceId(),
-                    LockDesc::COORD,
-                    LockDesc::XCL));
-            std::shared_ptr<LockDesc> resLock(query->requestLock(lock));
-
-            SCIDB_ASSERT(resLock);
-            SCIDB_ASSERT(resLock->getLockMode() == LockDesc::XCL);
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "temporary arrays not supported";
         }
 
         query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);

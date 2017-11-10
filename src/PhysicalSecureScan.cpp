@@ -28,7 +28,6 @@
 #include <array/DBArray.h>
 #include <array/Dense1MChunkEstimator.h>
 #include <array/Metadata.h>
-#include <array/TransientCache.h>
 #include <query/Operator.h>
 #include <system/SystemCatalog.h>
 
@@ -92,14 +91,6 @@ class PhysicalSecureScan: public  PhysicalOperator
         Coordinates highBoundary = _schema.getHighBoundary();
 
         return PhysicalBoundaries(lowBoundary, highBoundary);
-    }
-
-    virtual void preSingleExecute(std::shared_ptr<Query> query)
-    {
-        if (_schema.isTransient())
-        {
-            query->isDistributionDegradedForWrite(_schema);
-        }
     }
 
     std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArrays,
@@ -271,26 +262,6 @@ class PhysicalSecureScan: public  PhysicalOperator
                              _schema.getDistribution(),
                              _schema.getResidency());
 
-        // Get worker lock for transient arrays.
-        if (_schema.isTransient() && !query->isCoordinator())
-        {
-            std::shared_ptr<LockDesc> lock(
-                make_shared<LockDesc>(
-                    namespaceName,
-                    arrayName,
-                    query->getQueryID(),
-                    Cluster::getInstance()->getLocalInstanceId(),
-                    LockDesc::WORKER,
-                    LockDesc::XCL));
-
-            Query::Finalizer f = bind(&UpdateErrorHandler::releaseLock, lock,_1);
-            query->pushFinalizer(f);
-            SystemCatalog::ErrorChecker errorChecker(bind(&Query::validate, query));
-            if (!SystemCatalog::getInstance()->lockArray(lock, errorChecker)) {
-                throw USER_EXCEPTION(SCIDB_SE_SYSCAT, SCIDB_LE_CANT_INCREMENT_LOCK)<< lock->toString();
-            }
-        }
-
         if (_schema.isAutochunked())
         {
             // TODO
@@ -300,14 +271,6 @@ class PhysicalSecureScan: public  PhysicalOperator
 
             Dense1MChunkEstimator::estimate(_schema.getDimensions());
             return make_shared<MemArray>(_schema, query);
-        }
-        else if (_schema.isTransient())
-        {
-            // TODO
-
-            MemArrayPtr a = transient::lookup(_schema,query);
-            ASSERT_EXCEPTION(a.get()!=nullptr, string("Temp array ")+_schema.toString()+string(" not found"));
-            return a;                                   // ...temp array
         }
         else
         {
