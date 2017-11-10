@@ -32,7 +32,6 @@
 #include <system/SystemCatalog.h>
 
 #include "query/ops/between/BetweenArray.h"
-#include "query/ops/cross_join/CrossJoinArray.h"
 
 using namespace std;
 
@@ -124,14 +123,12 @@ class PhysicalSecureScan: public  PhysicalOperator
         size_t permNDims = permDims.size();
         Coordinates permCoordStart(permNDims);
         Coordinates permCoordEnd(permNDims);
-        size_t permExtraDim = -1;
         for (size_t i = 0; i < permNDims; i++)
         {
             if (permDims[i].hasNameAndAlias("user_id"))
             {
                 permCoordStart[i] = _userId;
                 permCoordEnd[i] = _userId;
-                permExtraDim = i;
             }
             else
             {
@@ -141,7 +138,6 @@ class PhysicalSecureScan: public  PhysicalOperator
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordStart[" << i << "]:" << permCoordStart[i]);
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordEnd[" << i << "]:" << permCoordEnd[i]);
         }
-        assert(permExtraDim >= 0);
 
         // Build spatial range
         SpatialRangesPtr permSpatialRangesPtr = make_shared<SpatialRanges>(permNDims);
@@ -153,130 +149,13 @@ class PhysicalSecureScan: public  PhysicalOperator
             make_shared<BetweenArray>(permSchema, permSpatialRangesPtr, permArray));
         LOG4CXX_DEBUG(logger, "secure_scan::permBetweenArray:" << permBetweenArray);
 
-        // Set join dimensions
-        Dimensions const& dataDims = _schema.getDimensions();
-        size_t dataNDims = dataDims.size();
-        vector<int> dataJoinDims(dataNDims, -1); // Left
-        vector<int> permJoinDims(permNDims, -1); // Right
-
-        int ref = -1;
-        for (size_t i = 0; i < dataNDims; i++)
-        {
-            if (dataDims[i].hasNameAndAlias("dataset_id"))
-            {
-                dataJoinDims[i] = 0;
-                ref = i;
-                LOG4CXX_DEBUG(logger, "secure_scan::dataDims[" << i << "]:" << dataDims[i]);
-            }
-            LOG4CXX_DEBUG(logger, "secure_scan::dataJoinDims[" << i << "]:" << dataJoinDims[i]);
-        }
-        assert(ref >= 0);
-
-        for (size_t i = 0; i < permNDims; i++)
-        {
-            if (permDims[i].hasNameAndAlias("dataset_id"))
-            {
-                permJoinDims[i] = ref;
-                LOG4CXX_DEBUG(logger, "secure_scan::permDims[" << i << "]:" << permDims[i]);
-            }
-            LOG4CXX_DEBUG(logger, "secure_scan::permJoinDims[" << i << "]:" << permJoinDims[i]);
-        }
-
-        // Set join schema
-        // - Dimensions
-        Dimensions joinDims(dataNDims + 1);
-        for (size_t i = 0; i< dataNDims; i++)
-        {
-            joinDims[i] = dataDims[i];
-            LOG4CXX_DEBUG(logger, "secure_scan::joinDims[" << i << "]:" << joinDims[i]);
-        }
-        joinDims[dataNDims] = permDims[permExtraDim];
-        LOG4CXX_DEBUG(logger, "secure_scan::joinDims[" << dataNDims << "]:" << joinDims[dataNDims]);
-
-        // - Attributes
-        Attributes const& dataAttrs = _schema.getAttributes();    // Left
-        Attributes const& permAttrs = permSchema.getAttributes(); // Right
-        size_t dataNAttrs = dataAttrs.size();
-        size_t permNAttrs = permAttrs.size();
-        size_t joinNAttrs = dataNAttrs + permNAttrs;
-        AttributeDesc const* dataAttrBitmap = _schema.getEmptyBitmapAttribute();    // Left
-        AttributeDesc const* permAttrBitmap = permSchema.getEmptyBitmapAttribute(); // Right
-        if (dataAttrBitmap && permAttrBitmap)
-        {
-            joinNAttrs -= 1;
-        }
-        Attributes joinAttrs(joinNAttrs);
-        AttributeID j = 0;
-        for (size_t i = 0; i < dataNAttrs; i++)
-        {
-            AttributeDesc const& attr = dataAttrs[i];
-            if (!attr.isEmptyIndicator())
-            {
-                joinAttrs[j] = AttributeDesc(j,
-                                             attr.getName(),
-                                             attr.getType(),
-                                             attr.getFlags(),
-                                             attr.getDefaultCompressionMethod(),
-                                             attr.getAliases(),
-                                             &attr.getDefaultValue(),
-                                             attr.getDefaultValueExpr());
-                // no addAlias
-                LOG4CXX_DEBUG(logger, "secure_scan::(1)joinAttrs[" << j << "]:" << joinAttrs[j]);
-                j += 1;
-            }
-        }
-        for (size_t i = 0; i < permNAttrs; i++)
-        {
-            AttributeDesc const& attr = permAttrs[i];
-            joinAttrs[j] = AttributeDesc(j,
-                                         attr.getName(),
-                                         attr.getType(),
-                                         attr.getFlags(),
-                                         attr.getDefaultCompressionMethod(),
-                                         attr.getAliases(),
-                                         &attr.getDefaultValue(),
-                                         attr.getDefaultValueExpr());
-            // no addAlias
-            LOG4CXX_DEBUG(logger, "secure_scan::(2)joinAttrs[" << j << "]:" << joinAttrs[j]);
-            j += 1;
-        }
-        if (dataAttrBitmap && !permAttrBitmap)
-        {
-            AttributeDesc const& attr = *dataAttrBitmap;
-            joinAttrs[j] = AttributeDesc(j,
-                                         attr.getName(),
-                                         attr.getType(),
-                                         attr.getFlags(),
-                                         attr.getDefaultCompressionMethod(),
-                                         attr.getAliases(),
-                                         &attr.getDefaultValue(),
-                                         attr.getDefaultValueExpr());
-            // no addAlias
-            LOG4CXX_DEBUG(logger, "secure_scan::(3)joinAttrs[" << j << "]:" << joinAttrs[j]);
-            j += 1;
-        }
-        // - ArrayDesc (Schema)
-        ArrayDesc joinSchema(_schema.getName(),
-                             joinAttrs,
-                             joinDims,
-                             _schema.getDistribution(),
-                             _schema.getResidency());
 
         assert(_schema.getId() != 0);
         assert(_schema.getUAId() != 0);
 
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
-        // Add CrossJoin
-        std::shared_ptr<Array> joinArray(
-            make_shared<CrossJoinArray>(joinSchema,
-                                        dataArray,
-                                        permArray,
-                                        dataJoinDims,
-                                        permJoinDims));
-        LOG4CXX_DEBUG(logger, "secure_scan::joinArray:" << joinArray);
-
-        return joinArray;
+        return dataArray;
     }
 
   private:
