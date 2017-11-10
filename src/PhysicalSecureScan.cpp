@@ -97,15 +97,19 @@ class PhysicalSecureScan: public  PhysicalOperator
     {
         SCIDB_ASSERT(!_arrayName.empty());
 
-        std::string arrayName;
-        std::string namespaceName;
-        query->getNamespaceArrayNames(_arrayName, namespaceName, arrayName);
+        assert(_schema.getId() != 0);
+        assert(_schema.getUAId() != 0);
 
-        // Get permissions array.
+        // Get data array name
+        std::string dataArrayName;
+        std::string dataNSName;
+        query->getNamespaceArrayNames(_arrayName, dataNSName, dataArrayName);
+
+        // Get permissions array
         ArrayDesc permSchema;
         SystemCatalog::GetArrayDescArgs args;
         args.nsName = "permissions";
-        args.arrayName = arrayName;
+        args.arrayName = dataArrayName;
         args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
         args.versionId = LAST_VERSION;
         args.throwIfNotFound = true;
@@ -123,6 +127,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         size_t permNDims = permDims.size();
         Coordinates permCoordStart(permNDims);
         Coordinates permCoordEnd(permNDims);
+        size_t permDimDataIdx = -1;
         for (size_t i = 0; i < permNDims; i++)
         {
             if (permDims[i].hasNameAndAlias("user_id"))
@@ -135,27 +140,87 @@ class PhysicalSecureScan: public  PhysicalOperator
                 permCoordStart[i] = permDims[i].getStartMin();
                 permCoordEnd[i] = permDims[i].getEndMax();
             }
+            if (permDims[i].hasNameAndAlias("dataset_id"))
+            {
+                permDimDataIdx = i;
+            }
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordStart[" << i << "]:" << permCoordStart[i]);
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordEnd[" << i << "]:" << permCoordEnd[i]);
         }
+        assert(permDimDataIdx >= 0);
 
-        // Build spatial range
+        // Build spatial range for permissions array
         SpatialRangesPtr permSpatialRangesPtr = make_shared<SpatialRanges>(permNDims);
         permSpatialRangesPtr->insert(SpatialRange(permCoordStart, permCoordEnd));
         permSpatialRangesPtr->buildIndex();
 
-        // Add between
+        // Add between for permissions array
         std::shared_ptr<Array> permBetweenArray(
-            make_shared<BetweenArray>(permSchema, permSpatialRangesPtr, permArray));
+            make_shared<BetweenArray>(permSchema,
+                                      permSpatialRangesPtr,
+                                      permArray));
         LOG4CXX_DEBUG(logger, "secure_scan::permBetweenArray:" << permBetweenArray);
 
+        // Redistribute permissions array
+        std::shared_ptr<Array> permRedistArray = redistributeToRandomAccess(
+            permBetweenArray,
+            createDistribution(psReplication),
+            permSchema.getResidency(),
+            query,
+            getShared(),
+            true);
 
-        assert(_schema.getId() != 0);
-        assert(_schema.getUAId() != 0);
+        // Set cooridnates for data array
+        Dimensions const& dataDims = _schema.getDimensions();
+        size_t dataNDims = dataDims.size();
+        Coordinates dataCoordStart(dataNDims);
+        Coordinates dataCoordEnd(dataNDims);
 
+        // Build spatial range for data array
+        SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
+        shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
+        while (!aiter->end())
+        {
+            ConstChunk const* chunk = &(aiter->getChunk());
+            shared_ptr<ConstChunkIterator> citer =
+                chunk->getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS
+                                        | ConstChunkIterator::IGNORE_EMPTY_CELLS);
+            while (!citer->end())
+            {
+                Coordinates const permCoord = citer->getPosition();
+
+                for (size_t i = 0; i < dataNDims; i++)
+                {
+                    if (dataDims[i].hasNameAndAlias("dataset_id"))
+                    {
+                        dataCoordStart[i] = permCoord[permDimDataIdx];
+                        dataCoordEnd[i] = permCoord[permDimDataIdx];
+                    }
+                    else
+                    {
+                        dataCoordStart[i] = dataDims[i].getStartMin();
+                        dataCoordEnd[i] = dataDims[i].getEndMax();
+                    }
+                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
+                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
+                }
+                dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+
+                ++(*citer);
+            }
+            ++(*aiter);
+        }
+        dataSpatialRangesPtr->buildIndex();
+
+        // Get data array
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
-        return dataArray;
+        // Add between for data array
+        std::shared_ptr<Array> dataBetweenArray(
+            make_shared<BetweenArray>(_schema, dataSpatialRangesPtr, dataArray));
+        LOG4CXX_DEBUG(logger, "secure_scan::dataBetweenArray:" << dataBetweenArray);
+
+        return dataBetweenArray;
     }
 
   private:
