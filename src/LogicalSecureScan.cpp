@@ -39,21 +39,20 @@ namespace scidb
  * @brief The operator: secure_scan().
  *
  * @par Synopsis:
- *   secure_scan( srcArray [, ifTrim] )
+ *   secure_scan( srcArray )
  *
  * @par Summary:
  *   Produces a result array that is equivalent to a stored array.
  *
  * @par Input:
  *   - srcArray: the array to scan, with srcAttrs and srcDims.
- *   - ifTrim: whether to turn an unbounded array to a bounded array. Default value is false.
  *
  * @par Output array:
  *        <
  *   <br>   srcAttrs
  *   <br> >
  *   <br> [
- *   <br>   srcDims (ifTrim=false), or trimmed srcDims (ifTrim=true).
+ *   <br>   srcDims
  *   <br> ]
  *
  * @par Examples:
@@ -84,28 +83,13 @@ public:
         ADD_PARAM_VARIES()
     }
 
+    // TOUNDO
     Placeholders nextVaryParamPlaceholder(const std::vector<ArrayDesc> &schemas)
     {
         Placeholders res;
         res.push_back(END_OF_VARIES_PARAMS());
-        // TOUNDO
-        // if (_parameters.size() == 1) {
-        //     res.push_back(PARAM_CONSTANT(TID_BOOL));
-        // }
-        switch (_parameters.size()) {
-          case 0:
-            assert(false);
-            break;
-          case 1:
-            res.push_back(PARAM_CONSTANT(TID_BOOL));
-            break;
-          case 2:
+        if (_parameters.size() == 1) {
             res.push_back(PARAM_CONSTANT(TID_INT64));
-            break;
-          default:
-            // Translator will see END_OF_VARIES_PARAMS() and report the
-            // "too many arguments" error.
-           break;
         }
         return res;
     }
@@ -151,8 +135,7 @@ public:
     {
         assert(inputSchemas.size() == 0);
         // TOUNDO
-        // assert(_parameters.size() == 1 || _parameters.size() == 2);
-        assert(_parameters.size() >= 1 && _parameters.size() <= 3);
+        assert(_parameters.size() == 1 || _parameters.size() == 2);
         assert(_parameters[0]->getParamType() == PARAM_ARRAY_REF);
 
         std::shared_ptr<OperatorParamArrayReference>& arrayRef = (std::shared_ptr<OperatorParamArrayReference>&)_parameters[0];
@@ -175,25 +158,6 @@ public:
 
         schema.addAlias(arrayNameOrig);
         schema.setNamespaceName(args.nsName);
-
-        // Trim if the user wishes to.
-        if (_parameters.size() == 2 // the user provided a true/false clause
-            &&                       // and it's true
-            evaluate(
-                    ((std::shared_ptr<OperatorParamLogicalExpression>&)_parameters[1])->getExpression(),
-                    TID_BOOL
-                    ).getBool()
-            )
-        {
-            schema.trim();
-
-            // Without this change, harness test other.between_sub2 may fail.
-            //
-            // Once you trim the schema, the array is not the original array anymore.
-            // Some operators, such as concat(), may go to the system catalog to find schema for input arrays if named.
-            // We should make sure they do not succeed.
-            schema.setName("");
-        }
 
         SCIDB_ASSERT(schema.getDistribution()->getPartitioningSchema() != psUninitialized);
         SCIDB_ASSERT(schema.getDistribution()->getPartitioningSchema() != psUndefined);

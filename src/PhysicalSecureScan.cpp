@@ -54,8 +54,8 @@ class PhysicalSecureScan: public  PhysicalOperator
 
         // TODO
         _userId = -1;
-        if (_parameters.size() == 3) {
-            _userId = ((std::shared_ptr<OperatorParamPhysicalExpression>&)_parameters[2])->getExpression()->evaluate().getInt64();
+        if (_parameters.size() == 2) {
+            _userId = ((std::shared_ptr<OperatorParamPhysicalExpression>&)_parameters[1])->getExpression()->evaluate().getInt64();
         }
         LOG4CXX_DEBUG(logger, "secure_scan::userId:" << _userId);
     }
