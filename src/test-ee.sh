@@ -88,8 +88,8 @@ function grant () {
                     user_id, int64(id),
                     dataset_id, $2,
                     access, true),
-                permissions.dataset),
-            permissions.dataset);
+                $NS_PER.$DATASET),
+            $NS_PER.$DATASET);
         set_role_permissions('$1', 'namespace', '$NS_SEC', 'l')"
 }
 
@@ -138,20 +138,28 @@ iquery -A auth_gary -aq "scan(secured.dataset)" > test.out 2>&1 || true
 diff test.out test.expected
 
 
-## Use secure_scan
-# iquery -A auth_todd -o csv:l -aq "op_count(secure_scan(secured.dataset))" > test.out
-# cat <<EOF > test.expected
-# count
-# 11
-# EOF
-# diff test.out test.expected
+## TO UNDO Get user ID
+todd_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='todd'), id)")
+gary_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='gary'), id)")
 
-# iquery -A auth_gary -o csv:l -aq "op_count(secure_scan(secured.dataset))" > test.out
-# cat <<EOF > test.expected
-# count
-# 11
-# EOF
-# diff test.out test.expected
+## Use secure_scan
+iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset, $todd_id)" > test.out
+cat <<EOF > test.expected
+val
+'1'
+'2'
+'3'
+EOF
+diff test.out test.expected
+
+iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset, $gary_id)" > test.out
+cat <<EOF > test.expected
+val
+'3'
+'4'
+'5'
+EOF
+diff test.out test.expected
 
 
 exit 0
