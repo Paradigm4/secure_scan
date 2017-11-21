@@ -138,13 +138,8 @@ iquery -A auth_gary -aq "scan(secured.dataset)" > test.out 2>&1 || true
 diff test.out test.expected
 
 
-## TO UNDO Get user ID
-todd_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='todd'), id)")
-gary_id=$(iquery -A auth_admin -o csv -aq "project(filter(list('users'), name='gary'), id)")
-
-
 ## Use secure_scan
-iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset, $todd_id)" > test.out
+iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset)" > test.out
 cat <<EOF > test.expected
 val
 'dataset_1'
@@ -153,7 +148,7 @@ val
 EOF
 diff test.out test.expected
 
-iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset, $gary_id)" > test.out
+iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset)" > test.out
 cat <<EOF > test.expected
 val
 'dataset_3'

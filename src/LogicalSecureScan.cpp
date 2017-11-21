@@ -83,14 +83,10 @@ public:
         ADD_PARAM_VARIES()
     }
 
-    // TOUNDO
     Placeholders nextVaryParamPlaceholder(const std::vector<ArrayDesc> &schemas)
     {
         Placeholders res;
         res.push_back(END_OF_VARIES_PARAMS());
-        if (_parameters.size() == 1) {
-            res.push_back(PARAM_CONSTANT(TID_INT64));
-        }
         return res;
     }
 
@@ -130,8 +126,7 @@ public:
     ArrayDesc inferSchema(std::vector< ArrayDesc> inputSchemas, std::shared_ptr< Query> query)
     {
         assert(inputSchemas.size() == 0);
-        // TOUNDO
-        assert(_parameters.size() == 1 || _parameters.size() == 2);
+        assert(_parameters.size() == 1);
         assert(_parameters[0]->getParamType() == PARAM_ARRAY_REF);
 
         std::shared_ptr<OperatorParamArrayReference>& arrayRef = (std::shared_ptr<OperatorParamArrayReference>&)_parameters[0];

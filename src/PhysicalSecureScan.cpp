@@ -29,6 +29,7 @@
 #include <array/Dense1MChunkEstimator.h>
 #include <array/Metadata.h>
 #include <query/Operator.h>
+#include <rbac/Session.h>
 #include <system/SystemCatalog.h>
 
 #include "query/ops/between/BetweenArray.h"
@@ -49,13 +50,6 @@ class PhysicalSecureScan: public  PhysicalOperator
     PhysicalOperator(logicalName, physicalName, parameters, schema)
     {
         _arrayName = dynamic_pointer_cast<OperatorParamReference>(parameters[0])->getObjectName();
-
-        // TODO
-        _userId = -1;
-        if (_parameters.size() == 2) {
-            _userId = ((std::shared_ptr<OperatorParamPhysicalExpression>&)_parameters[1])->getExpression()->evaluate().getInt64();
-        }
-        LOG4CXX_DEBUG(logger, "secure_scan::userId:" << _userId);
     }
 
     virtual RedistributeContext getOutputDistribution(const std::vector<RedistributeContext> & inputDistributions,
@@ -100,6 +94,9 @@ class PhysicalSecureScan: public  PhysicalOperator
         assert(_schema.getId() != 0);
         assert(_schema.getUAId() != 0);
 
+        Coordinate userId = query->getSession()->getUser().getId();
+        LOG4CXX_DEBUG(logger, "secure_scan::userId:" << userId);
+
         // Get data array name
         std::string dataArrayName;
         std::string dataNSName;
@@ -132,8 +129,8 @@ class PhysicalSecureScan: public  PhysicalOperator
         {
             if (permDims[i].hasNameAndAlias("user_id"))
             {
-                permCoordStart[i] = _userId;
-                permCoordEnd[i] = _userId;
+                permCoordStart[i] = userId;
+                permCoordEnd[i] = userId;
             }
             else
             {
@@ -225,7 +222,6 @@ class PhysicalSecureScan: public  PhysicalOperator
 
   private:
     string _arrayName;
-    Coordinate _userId;
 };
 
 REGISTER_PHYSICAL_OPERATOR_FACTORY(PhysicalSecureScan, "secure_scan", "PhysicalSecureScan");
