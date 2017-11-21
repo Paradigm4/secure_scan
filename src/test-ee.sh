@@ -87,28 +87,32 @@ function grant () {
                     filter(list('users'), name='$1'),
                     user_id, int64(id),
                     dataset_id, $2,
-                    access, true),
+                    access, $3),
                 $NS_PER.$DATASET),
             $NS_PER.$DATASET);
         set_role_permissions('$1', 'namespace', '$NS_SEC', 'l')"
 }
 
-grant todd 1
-grant todd 2
-grant todd 3
+grant todd 1 true
+grant todd 2 false
+grant todd 3 true
+grant todd 4 true
 
-grant gary 3
-grant gary 4
-grant gary 5
+grant gary 2 true
+grant gary 3 true
+grant gary 4 false
+grant gary 5 true
 
 
 ## Verify Permissions
 cat <<EOF > test.expected
 true,'todd',1
-true,'todd',2
+false,'todd',2
 true,'todd',3
+true,'todd',4
+true,'gary',2
 true,'gary',3
-true,'gary',4
+false,'gary',4
 true,'gary',5
 EOF
 iquery -A auth_admin -o csv -aq "
@@ -143,16 +147,16 @@ iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset)" > test.out
 cat <<EOF > test.expected
 val
 'dataset_1'
-'dataset_2'
 'dataset_3'
+'dataset_4'
 EOF
 diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset)" > test.out
 cat <<EOF > test.expected
 val
+'dataset_2'
 'dataset_3'
-'dataset_4'
 'dataset_5'
 EOF
 diff test.out test.expected

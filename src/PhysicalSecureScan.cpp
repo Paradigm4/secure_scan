@@ -94,6 +94,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         assert(_schema.getId() != 0);
         assert(_schema.getUAId() != 0);
 
+        // Get user ID
         Coordinate userId = query->getSession()->getUser().getId();
         LOG4CXX_DEBUG(logger, "secure_scan::userId:" << userId);
 
@@ -184,25 +185,27 @@ class PhysicalSecureScan: public  PhysicalOperator
                                         | ConstChunkIterator::IGNORE_EMPTY_CELLS);
             while (!citer->end())
             {
-                Coordinates const permCoord = citer->getPosition();
-
-                for (size_t i = 0; i < dataNDims; i++)
+                if (citer->getItem().getBool())
                 {
-                    if (dataDims[i].hasNameAndAlias("dataset_id"))
-                    {
-                        dataCoordStart[i] = permCoord[permDimDataIdx];
-                        dataCoordEnd[i] = permCoord[permDimDataIdx];
-                    }
-                    else
-                    {
-                        dataCoordStart[i] = dataDims[i].getStartMin();
-                        dataCoordEnd[i] = dataDims[i].getEndMax();
-                    }
-                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
-                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
-                }
-                dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+                    Coordinates const permCoord = citer->getPosition();
 
+                    for (size_t i = 0; i < dataNDims; i++)
+                    {
+                        if (dataDims[i].hasNameAndAlias("dataset_id"))
+                        {
+                            dataCoordStart[i] = permCoord[permDimDataIdx];
+                            dataCoordEnd[i] = permCoord[permDimDataIdx];
+                        }
+                        else
+                        {
+                            dataCoordStart[i] = dataDims[i].getStartMin();
+                            dataCoordEnd[i] = dataDims[i].getEndMax();
+                        }
+                        LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
+                        LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
+                    }
+                    dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+                }
                 ++(*citer);
             }
             ++(*aiter);
