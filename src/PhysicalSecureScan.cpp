@@ -32,7 +32,7 @@
 #include <rbac/Session.h>
 #include <system/SystemCatalog.h>
 
-#include "query/ops/between/BetweenArray.h"
+#include "BetweenArray.h"
 
 using namespace std;
 
