@@ -106,8 +106,8 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Get permissions array
         ArrayDesc permSchema;
         SystemCatalog::GetArrayDescArgs args;
-        args.nsName = PERMISSIONS_NS;
-        args.arrayName = ACCESS_DIM;
+        args.nsName = PERM_NS;
+        args.arrayName = PERM_ARRAY;
         args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
         args.versionId = LAST_VERSION;
         args.throwIfNotFound = true;
@@ -128,7 +128,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         size_t permDimDataIdx = -1;
         for (size_t i = 0; i < permNDims; i++)
         {
-            if (permDims[i].hasNameAndAlias("user_id"))
+            if (permDims[i].hasNameAndAlias(USER_DIM))
             {
                 permCoordStart[i] = userId;
                 permCoordEnd[i] = userId;
@@ -138,7 +138,7 @@ class PhysicalSecureScan: public  PhysicalOperator
                 permCoordStart[i] = permDims[i].getStartMin();
                 permCoordEnd[i] = permDims[i].getEndMax();
             }
-            if (permDims[i].hasNameAndAlias(ACCESS_DIM))
+            if (permDims[i].hasNameAndAlias(PERM_DIM))
             {
                 permDimDataIdx = i;
             }
@@ -191,7 +191,7 @@ class PhysicalSecureScan: public  PhysicalOperator
 
                     for (size_t i = 0; i < dataNDims; i++)
                     {
-                        if (dataDims[i].hasNameAndAlias(ACCESS_DIM))
+                        if (dataDims[i].hasNameAndAlias(PERM_DIM))
                         {
                             dataCoordStart[i] = permCoord[permDimDataIdx];
                             dataCoordEnd[i] = permCoord[permDimDataIdx];

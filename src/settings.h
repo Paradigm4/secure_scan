@@ -23,6 +23,7 @@
 * END_COPYRIGHT
 */
 
-#define PERMISSIONS_NS "permissions"
-#define USER_DIM       "user_id"
-#define ACCESS_DIM     "dataset_id"
+#define PERM_NS    "permissions"
+#define PERM_ARRAY "dataset_id"
+#define USER_DIM   "user_id"
+#define PERM_DIM   "dataset_id"
