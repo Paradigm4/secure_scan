@@ -14,7 +14,7 @@ function cleanup {
     ## Cleanup
     iquery -A auth_admin -anq "remove($NS_SEC.$DATASET)"  || true
     iquery -A auth_admin -anq "drop_namespace('$NS_SEC')" || true
-    iquery -A auth_admin -anq "remove($NS_PER.$DATASET)"  || true
+    iquery -A auth_admin -anq "remove($NS_PER.$DIM)"      || true
     iquery -A auth_admin -anq "drop_namespace('$NS_PER')" || true
     iquery -A auth_admin -anq "drop_user('todd')"         || true
     iquery -A auth_admin -anq "drop_user('gary')"         || true
@@ -43,7 +43,7 @@ iquery -A auth_admin -aq "
 
 iquery -A auth_admin -aq "create_namespace('$NS_PER')"
 iquery -A auth_admin -aq "
-    create array $NS_PER.$DATASET <$FLAG:bool>[user_id,$DIM=1:10:0:10]"
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id,$DIM=1:10:0:10]"
 
 
 ## Todd Auth
@@ -88,8 +88,8 @@ function grant () {
                     user_id, int64(id),
                     dataset_id, $2,
                     access, $3),
-                $NS_PER.$DATASET),
-            $NS_PER.$DATASET);
+                $NS_PER.$DIM),
+            $NS_PER.$DIM);
         set_role_permissions('$1', 'namespace', '$NS_SEC', 'l')"
 }
 
@@ -118,7 +118,7 @@ EOF
 iquery -A auth_admin -o csv -aq "
     apply(
         cross_join(
-            permissions.dataset as D,
+            permissions.$DIM as D,
             redimension(
                 apply(list('users'), user_id, int64(id)),
                 <name:string>[user_id]) as U,

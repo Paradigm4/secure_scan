@@ -32,6 +32,7 @@
 #include <rbac/Session.h>
 #include <system/SystemCatalog.h>
 
+#include "settings.h"
 #include "BetweenArray.h"
 
 using namespace std;
@@ -106,8 +107,8 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Get permissions array
         ArrayDesc permSchema;
         SystemCatalog::GetArrayDescArgs args;
-        args.nsName = "permissions";
-        args.arrayName = dataArrayName;
+        args.nsName = PERMISSIONS_NS;
+        args.arrayName = ACCESS_DIM;
         args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
         args.versionId = LAST_VERSION;
         args.throwIfNotFound = true;
@@ -138,7 +139,7 @@ class PhysicalSecureScan: public  PhysicalOperator
                 permCoordStart[i] = permDims[i].getStartMin();
                 permCoordEnd[i] = permDims[i].getEndMax();
             }
-            if (permDims[i].hasNameAndAlias("dataset_id"))
+            if (permDims[i].hasNameAndAlias(ACCESS_DIM))
             {
                 permDimDataIdx = i;
             }
@@ -191,7 +192,7 @@ class PhysicalSecureScan: public  PhysicalOperator
 
                     for (size_t i = 0; i < dataNDims; i++)
                     {
-                        if (dataDims[i].hasNameAndAlias("dataset_id"))
+                        if (dataDims[i].hasNameAndAlias(ACCESS_DIM))
                         {
                             dataCoordStart[i] = permCoord[permDimDataIdx];
                             dataCoordEnd[i] = permCoord[permDimDataIdx];
