@@ -125,11 +125,13 @@ class PhysicalSecureScan: public  PhysicalOperator
         size_t permNDims = permDims.size();
         Coordinates permCoordStart(permNDims);
         Coordinates permCoordEnd(permNDims);
-        size_t permDimDataIdx = -1;
+        size_t permDimPermIdx;
+        bool hasUserDim = false, hasPermDim = false;
         for (size_t i = 0; i < permNDims; i++)
         {
             if (permDims[i].hasNameAndAlias(USER_DIM))
             {
+                hasUserDim = true;
                 permCoordStart[i] = userId;
                 permCoordEnd[i] = userId;
             }
@@ -140,12 +142,26 @@ class PhysicalSecureScan: public  PhysicalOperator
             }
             if (permDims[i].hasNameAndAlias(PERM_DIM))
             {
-                permDimDataIdx = i;
+                hasPermDim = true;
+                permDimPermIdx = i;
             }
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordStart[" << i << "]:" << permCoordStart[i]);
             LOG4CXX_DEBUG(logger, "secure_scan::permCoordEnd[" << i << "]:" << permCoordEnd[i]);
         }
-        assert(permDimDataIdx >= 0);
+        if (!hasUserDim)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "permissions array does not have a '"
+                << USER_DIM
+                << "' dimension";
+        }
+        if (!hasPermDim)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "permissions array does not have a '"
+                << PERM_DIM
+                << "' dimension";
+        }
 
         // Build spatial range for permissions array
         SpatialRangesPtr permSpatialRangesPtr = make_shared<SpatialRanges>(permNDims);
@@ -193,8 +209,8 @@ class PhysicalSecureScan: public  PhysicalOperator
                     {
                         if (dataDims[i].hasNameAndAlias(PERM_DIM))
                         {
-                            dataCoordStart[i] = permCoord[permDimDataIdx];
-                            dataCoordEnd[i] = permCoord[permDimDataIdx];
+                            dataCoordStart[i] = permCoord[permDimPermIdx];
+                            dataCoordEnd[i] = permCoord[permDimPermIdx];
                         }
                         else
                         {
