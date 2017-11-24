@@ -91,9 +91,8 @@ class PhysicalSecureScan: public  PhysicalOperator
                                       std::shared_ptr<Query> query)
     {
         SCIDB_ASSERT(!_arrayName.empty());
-
-        assert(_schema.getId() != 0);
-        assert(_schema.getUAId() != 0);
+        SCIDB_ASSERT(_schema.getId() != 0);
+        SCIDB_ASSERT(_schema.getUAId() != 0);
 
         // Get user ID
         Coordinate userId = query->getSession()->getUser().getId();

@@ -94,11 +94,12 @@ public:
     {
         LogicalOperator::inferAccess(query);
 
-        assert(!_parameters.empty());
-        assert(_parameters.front()->getParamType() == PARAM_ARRAY_REF);
+        SCIDB_ASSERT(!_parameters.empty());
+        SCIDB_ASSERT(_parameters.front()->getParamType() == PARAM_ARRAY_REF);
 
         const string& arrayNameOrig =
-            ((std::shared_ptr<OperatorParamReference>&)_parameters.front())->getObjectName();
+            ((std::shared_ptr<OperatorParamReference>&)
+             _parameters.front())->getObjectName();
         SCIDB_ASSERT(ArrayDesc::isNameUnversioned(arrayNameOrig));
 
         ArrayDesc srcDesc;
