@@ -29,6 +29,8 @@
 #include <system/SystemCatalog.h>
 #include <system/Exceptions.h>
 
+#include "settings.h"
+
 using namespace std;
 
 namespace scidb
@@ -120,6 +122,19 @@ public:
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
                 << "auto-chunked arrays not supported";
         }
+
+        const LockDesc::LockMode lockMode = LockDesc::RD;
+        std::shared_ptr<LockDesc>  lock(
+            make_shared<LockDesc>(
+                PERM_NS,
+                PERM_ARRAY,
+                query->getQueryID(),
+                Cluster::getInstance()->getLocalInstanceId(),
+                LockDesc::COORD,
+                lockMode));
+        std::shared_ptr<LockDesc> resLock = query->requestLock(lock);
+        SCIDB_ASSERT(resLock);
+        SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);
 
         query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
     }
