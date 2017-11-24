@@ -193,6 +193,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Build spatial range for data array
         SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
         shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
+        hasPermDim = false;
         while (!aiter->end())
         {
             ConstChunk const* chunk = &(aiter->getChunk());
@@ -209,6 +210,7 @@ class PhysicalSecureScan: public  PhysicalOperator
                     {
                         if (dataDims[i].hasNameAndAlias(PERM_DIM))
                         {
+                            hasPermDim = true;
                             dataCoordStart[i] = permCoord[permDimPermIdx];
                             dataCoordEnd[i] = permCoord[permDimPermIdx];
                         }
@@ -227,6 +229,14 @@ class PhysicalSecureScan: public  PhysicalOperator
             ++(*aiter);
         }
         dataSpatialRangesPtr->buildIndex();
+
+        if (!hasPermDim)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "scanned array does not have a '"
+                << PERM_DIM
+                << "' dimension";
+        }
 
         // Get data array
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
