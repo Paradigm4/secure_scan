@@ -113,6 +113,16 @@ class PhysicalSecureScan: public  PhysicalOperator
         args.throwIfNotFound = true;
         args.result = &permSchema;
         SystemCatalog::getInstance()->getArrayDesc(args);
+        if (permSchema.isTransient())
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "temporary permissions arrays not supported";
+        }
+        if (permSchema.isAutochunked()) // possibly empty
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "auto-chunked permissions arrays not supported";
+        }
 
         permSchema.setNamespaceName(args.nsName);
         LOG4CXX_DEBUG(logger, "secure_scan::permSchema:" << permSchema);
@@ -224,13 +234,17 @@ class PhysicalSecureScan: public  PhysicalOperator
             }
             ++(*aiter);
         }
-        dataSpatialRangesPtr->buildIndex();
-
+        if (dataSpatialRangesPtr->ranges().size() == 0)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "user has no permissions in the scanned array";
+        }
         if (!hasPermDim)
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
                 << "scanned array does not have a permission dimension";
         }
+        dataSpatialRangesPtr->buildIndex();
 
         // Get data array
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
