@@ -3,8 +3,8 @@
 
 NS_SEC=secured
 NS_PER=permissions
-DATASET=dataset
-DIM=${DATASET}_id
+DAT=dataset
+DIM=${DAT}_id
 FLAG=access
 
 
@@ -12,10 +12,12 @@ set -o errexit
 
 function cleanup {
     ## Cleanup
-    iquery -A auth_admin -anq "remove($NS_SEC.$DATASET)"  || true
+    iquery -A auth_admin -anq "remove($NS_SEC.$DAT)"      || true
     iquery -A auth_admin -anq "drop_namespace('$NS_SEC')" || true
+
     iquery -A auth_admin -anq "remove($NS_PER.$DIM)"      || true
     iquery -A auth_admin -anq "drop_namespace('$NS_PER')" || true
+
     iquery -A auth_admin -anq "drop_user('todd')"         || true
     iquery -A auth_admin -anq "drop_user('gary')"         || true
     rm auth_admin auth_todd auth_gary test.expected test.out
@@ -33,17 +35,10 @@ EOF
 chmod 0600 auth_admin
 
 
-## Init
+## Create Namespaces
 iquery -A auth_admin -aq "load_library('secure_scan')"
 iquery -A auth_admin -aq "create_namespace('$NS_SEC')"
-iquery -A auth_admin -aq "
-    store(
-      build(<val:string>[$DIM=1:10:0:10], '${DATASET}_' + string($DIM)),
-      $NS_SEC.$DATASET)"
-
 iquery -A auth_admin -aq "create_namespace('$NS_PER')"
-iquery -A auth_admin -aq "
-    create array $NS_PER.$DIM <$FLAG:bool>[user_id,$DIM=1:10:0:10]"
 
 
 ## Todd Auth
@@ -78,7 +73,114 @@ iquery -A auth_admin -o csv -aq "project(list('users'), name)" > test.out
 diff test.out test.expected
 
 
-# Gran Permissions
+## Create Data Array
+iquery -A auth_admin -aq "
+    store(
+      build(<val:string>[$DIM=1:10:0:10], '${DAT}_' + string($DIM)),
+      $NS_SEC.$DAT)"
+
+
+## Grant Namespace List Permission
+iquery -A auth_admin -aq "
+   set_role_permissions('todd', 'namespace', '$NS_SEC', 'l');
+   set_role_permissions('gary', 'namespace', '$NS_SEC', 'l')"
+
+
+## 1. EXCEPTION: Temp permissions array
+iquery -A auth_admin -aq "
+    create temp array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 118
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: temporary permissions arrays not supported.
+EOF
+diff test.out test.expected
+iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
+
+
+## 2. EXCEPTION: Empty permissions array
+iquery -A auth_admin -aq "
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 123
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: auto-chunked permissions arrays not supported.
+EOF
+diff test.out test.expected
+iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
+
+
+## 3. EXCEPTION: No "user_id" dimension in permissions array
+iquery -A auth_admin -aq "
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id_WRONG=0:0;$DIM=0:0];
+    store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 163
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: permissions array does not have an user ID dimension.
+EOF
+diff test.out test.expected
+iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
+
+
+## 4. EXCEPTION: No "dataset_id" dimension in permissions array
+iquery -A auth_admin -aq "
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id=0:1;${DIM}_WRONG=0:1];
+    store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 168
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: permissions array does not have a permission dimension.
+EOF
+diff test.out test.expected
+iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
+
+
+## 5. EXCEPTION: No "dataset_id" dimension in data array
+iquery -A auth_admin -aq "remove($NS_SEC.$DAT)"
+iquery -A auth_admin -aq "
+    store(
+      build(<val:string>[${DIM}_WRONG=1:10:0:10], '${DAT}'),
+      $NS_SEC.$DAT)"
+todd_id=$(iquery -A auth_admin -o csv -aq "
+    project(filter(list('users'), name='todd'), id)")
+iquery -A auth_admin -aq "
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id=$todd_id:$todd_id;$DIM=0:0];
+    store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 244
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: scanned array does not have a permission dimension.
+EOF
+diff test.out test.expected
+iquery -A auth_admin -aq "remove($NS_PER.$DIM); remove($NS_SEC.$DAT)"
+
+
+## Create Permissions Array
+iquery -A auth_admin -aq "
+    create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10]"
+
+
+## Create Data Array
+iquery -A auth_admin -aq "create array $NS_SEC.$DAT <val:string>[$DIM=1:10:0:10]"
+
+
+## Gran Permissions
 function grant () {
     iquery -A auth_admin -aq "
         insert(
@@ -86,17 +188,29 @@ function grant () {
                 apply(
                     filter(list('users'), name='$1'),
                     user_id, int64(id),
-                    dataset_id, $2,
+                    $DIM, $2,
                     access, $3),
                 $NS_PER.$DIM),
-            $NS_PER.$DIM);
-        set_role_permissions('$1', 'namespace', '$NS_SEC', 'l')"
+            $NS_PER.$DIM)"
 }
 
 grant todd 1 true
 grant todd 2 false
 grant todd 3 true
 grant todd 4 true
+
+
+## 6. EXCEPTION: No permissions in the scanned array
+iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
+    2> test.out                                              \
+    || true
+cat <<EOF > test.expected
+UserException in file: PhysicalSecureScan.cpp function: execute line: 239
+Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
+Error description: Operator error. Illegal operation: user has no permissions in the scanned array.
+EOF
+diff test.out test.expected
+
 
 grant gary 2 true
 grant gary 3 true
@@ -124,7 +238,7 @@ iquery -A auth_admin -o csv -aq "
                 <name:string>[user_id]) as U,
             D.user_id,
             U.user_id),
-        dataset_id, dataset_id)" > test.out
+        $DIM, $DIM)" > test.out
 diff test.out test.expected
 
 
@@ -132,32 +246,53 @@ diff test.out test.expected
 cat <<EOF > test.expected
 UserException in file: src/namespaces/CheckAccess.cpp function: operator() line: 73
 Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
-Error description: Query processor error. Insufficient permissions, need {[(ns:secured)r],} but only have {[(ns:public)clrud],[(ns:secured)l],}.
+Error description: Query processor error. Insufficient permissions, need {[(ns:$NS_SEC)r],} but only have {[(ns:public)clrud],[(ns:$NS_SEC)l],}.
 EOF
 
-iquery -A auth_todd -aq "scan(secured.dataset)" > test.out 2>&1 || true
+iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
 diff test.out test.expected
 
-iquery -A auth_gary -aq "scan(secured.dataset)" > test.out 2>&1 || true
+iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
 diff test.out test.expected
 
 
 ## Use secure_scan
-iquery -A auth_todd -o csv:l -aq "secure_scan(secured.dataset)" > test.out
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
 cat <<EOF > test.expected
 val
-'dataset_1'
-'dataset_3'
-'dataset_4'
 EOF
 diff test.out test.expected
 
-iquery -A auth_gary -o csv:l -aq "secure_scan(secured.dataset)" > test.out
+iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
 cat <<EOF > test.expected
 val
-'dataset_2'
-'dataset_3'
-'dataset_5'
+EOF
+diff test.out test.expected
+
+
+## Populate data array
+iquery -A auth_admin -aq "
+    store(
+      build(<val:string>[$DIM=1:10:0:10], '${DAT}_' + string($DIM)),
+      $NS_SEC.$DAT)"
+
+
+## Use secure_scan
+iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat <<EOF > test.expected
+val
+'${DAT}_1'
+'${DAT}_3'
+'${DAT}_4'
+EOF
+diff test.out test.expected
+
+iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat <<EOF > test.expected
+val
+'${DAT}_2'
+'${DAT}_3'
+'${DAT}_5'
 EOF
 diff test.out test.expected
 
