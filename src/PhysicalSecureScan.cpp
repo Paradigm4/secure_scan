@@ -151,16 +151,12 @@ class PhysicalSecureScan: public  PhysicalOperator
         if (!hasUserDim)
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
-                << "permissions array does not have a '"
-                << USER_DIM
-                << "' dimension";
+                << "permissions array does not have an user ID dimension";
         }
         if (!hasPermDim)
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
-                << "permissions array does not have a '"
-                << PERM_DIM
-                << "' dimension";
+                << "permissions array does not have a permission dimension";
         }
 
         // Build spatial range for permissions array
@@ -233,9 +229,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         if (!hasPermDim)
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
-                << "scanned array does not have a '"
-                << PERM_DIM
-                << "' dimension";
+                << "scanned array does not have a permission dimension";
         }
 
         // Get data array
