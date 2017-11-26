@@ -11,6 +11,7 @@ FLAG=access
 set -o errexit
 
 function cleanup {
+    echo "--- entering cleanup"
     ## Cleanup
     iquery -A auth_admin -anq "remove($NS_SEC.$DAT)"      || true
     iquery -A auth_admin -anq "drop_namespace('$NS_SEC')" || true
@@ -20,7 +21,7 @@ function cleanup {
 
     iquery -A auth_admin -anq "drop_user('todd')"         || true
     iquery -A auth_admin -anq "drop_user('gary')"         || true
-    rm auth_admin auth_todd auth_gary test.expected test.out
+    rm auth_admin auth_todd auth_gary test.expected test.out test2.out
 }
 
 trap cleanup EXIT
@@ -92,12 +93,13 @@ iquery -A auth_admin -aq "
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 118
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: temporary permissions arrays not supported.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -107,12 +109,13 @@ iquery -A auth_admin -aq "
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 123
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: auto-chunked permissions arrays not supported.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -123,12 +126,13 @@ iquery -A auth_admin -aq "
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 163
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have an user ID dimension.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -139,12 +143,13 @@ iquery -A auth_admin -aq "
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 168
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have a permission dimension.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -162,12 +167,13 @@ iquery -A auth_admin -aq "
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 244
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: scanned array does not have a permission dimension.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM); remove($NS_SEC.$DAT)"
 
 
@@ -205,12 +211,13 @@ grant todd 4 true
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2> test.out                                              \
     || true
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 239
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: user has no permissions in the scanned array.
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 
 grant gary 2 true
@@ -240,7 +247,8 @@ iquery -A auth_admin -o csv -aq "
             D.user_id,
             U.user_id),
         $DIM, $DIM)" > test.out
-diff test.out test.expected
+cat test.out | grep -v "Failed query id:" > test2.out || true
+diff test2.out test.expected
 
 
 ## Verify Insufficient Permissioons
@@ -251,24 +259,28 @@ Error description: Query processor error. Insufficient permissions, need {[(ns:$
 EOF
 
 iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
-diff test.out test.expected
+cat test.out | grep -v "Failed query id:" > test2.out || true
+diff test2.out test.expected
 
 iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
-diff test.out test.expected
+cat test.out | grep -v "Failed query id:" > test2.out || true
+diff test2.out test.expected
 
 
 ## Use secure_scan
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 
 ## Populate data array
@@ -280,84 +292,93 @@ iquery -A auth_admin -aq "
 
 ## Use secure_scan
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 '${DAT}_1'
 '${DAT}_3'
 '${DAT}_4'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 '${DAT}_2'
 '${DAT}_3'
 '${DAT}_5'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 
 ## Use secure_scan and op_count
 iquery -A auth_todd -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 count
 3
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 count
 3
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 
 ## Use secure_scan and aggregate
 iquery -A auth_todd -o csv:l -aq "
     aggregate(secure_scan($NS_SEC.$DAT), max(val))" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val_max
 'dataset_4'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "
     aggregate(secure_scan($NS_SEC.$DAT), max(val))" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val_max
 'dataset_5'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 
 ## Use secure_scan and apply
 iquery -A auth_todd -o csv:l -aq "
     apply(secure_scan($NS_SEC.$DAT), i, dataset_id, j, val)" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val,i,j
 'dataset_1',1,'dataset_1'
 'dataset_3',3,'dataset_3'
 'dataset_4',4,'dataset_4'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "
     apply(secure_scan($NS_SEC.$DAT), i, dataset_id, j, val)" \
     > test.out
+cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val,i,j
 'dataset_2',2,'dataset_2'
 'dataset_3',3,'dataset_3'
 'dataset_5',5,'dataset_5'
 EOF
-diff test.out test.expected
+diff test2.out test.expected
 
+echo "### PASSED ALL TESTS"
 
 exit 0
