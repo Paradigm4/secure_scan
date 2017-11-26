@@ -73,8 +73,6 @@ public:
     LogicalSecureScan(const std::string& logicalName, const std::string& alias):
                     LogicalOperator(logicalName, alias)
     {
-        _properties.tile = true;
-
         // - With ADD_PARAM_INPUT()
         //   which is a typical way of providing an input array name,
         //   the array name will NOT appear in _parameters.
