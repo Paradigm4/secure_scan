@@ -105,10 +105,9 @@ public:
         ArrayDesc srcDesc;
         SystemCatalog::GetArrayDescArgs args;
         query->getNamespaceArrayNames(arrayNameOrig, args.nsName, args.arrayName);
-        args.result = &srcDesc;
         args.throwIfNotFound = true;
+        args.result = &srcDesc;
         SystemCatalog::getInstance()->getArrayDesc(args);
-
         if (srcDesc.isTransient())
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)

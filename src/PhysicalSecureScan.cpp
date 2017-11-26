@@ -252,7 +252,6 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Add between for data array
         std::shared_ptr<Array> dataBetweenArray(
             make_shared<BetweenArray>(_schema, dataSpatialRangesPtr, dataArray));
-        LOG4CXX_DEBUG(logger, "secure_scan::dataBetweenArray:" << dataBetweenArray);
 
         return dataBetweenArray;
     }
