@@ -269,18 +269,16 @@ diff test2.out test.expected
 
 ## Use secure_scan
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 
 ## Populate data array
@@ -292,92 +290,84 @@ iquery -A auth_admin -aq "
 
 ## Use secure_scan
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 '${DAT}_1'
 '${DAT}_3'
 '${DAT}_4'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val
 '${DAT}_2'
 '${DAT}_3'
 '${DAT}_5'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 
 ## Use secure_scan and op_count
 iquery -A auth_todd -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 count
 3
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 count
 3
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 
 ## Use secure_scan and aggregate
 iquery -A auth_todd -o csv:l -aq "
     aggregate(secure_scan($NS_SEC.$DAT), max(val))" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val_max
 'dataset_4'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "
     aggregate(secure_scan($NS_SEC.$DAT), max(val))" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val_max
 'dataset_5'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 
 ## Use secure_scan and apply
 iquery -A auth_todd -o csv:l -aq "
     apply(secure_scan($NS_SEC.$DAT), i, dataset_id, j, val)" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val,i,j
 'dataset_1',1,'dataset_1'
 'dataset_3',3,'dataset_3'
 'dataset_4',4,'dataset_4'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 iquery -A auth_gary -o csv:l -aq "
     apply(secure_scan($NS_SEC.$DAT), i, dataset_id, j, val)" \
     > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 val,i,j
 'dataset_2',2,'dataset_2'
 'dataset_3',3,'dataset_3'
 'dataset_5',5,'dataset_5'
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 echo "### PASSED ALL TESTS"
 
