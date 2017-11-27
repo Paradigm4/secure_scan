@@ -21,7 +21,7 @@ function cleanup {
 
     iquery -A auth_admin -anq "drop_user('todd')"         || true
     iquery -A auth_admin -anq "drop_user('gary')"         || true
-    rm auth_admin auth_todd auth_gary test.expected test.out test2.out
+    rm auth_admin auth_todd auth_gary test.expected test.out
 }
 
 trap cleanup EXIT
@@ -91,15 +91,14 @@ iquery -A auth_admin -aq "
 iquery -A auth_admin -aq "
     create temp array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 118
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: temporary permissions arrays not supported.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -107,15 +106,14 @@ iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 123
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: auto-chunked permissions arrays not supported.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -124,15 +122,14 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id_WRONG=0:0;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 163
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have an user ID dimension.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -141,15 +138,14 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=0:1;${DIM}_WRONG=0:1];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 168
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have a permission dimension.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
@@ -165,15 +161,14 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=$todd_id:$todd_id;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 244
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: scanned array does not have a permission dimension.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM); remove($NS_SEC.$DAT)"
 
 
@@ -209,15 +204,14 @@ grant todd 4 true
 
 ## 6. EXCEPTION: No permissions in the scanned array
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 239
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: user has no permissions in the scanned array.
 EOF
-diff test2.out test.expected
+diff test.out test.expected
 
 
 grant gary 2 true
@@ -246,9 +240,8 @@ iquery -A auth_admin -o csv -aq "
                 <name:string>[user_id]) as U,
             D.user_id,
             U.user_id),
-        $DIM, $DIM)" > test.out
-cat test.out | grep -v "Failed query id:" > test2.out || true
-diff test2.out test.expected
+        $DIM, $DIM)" | grep -v "Failed query id:" > test.out
+diff test.out test.expected
 
 
 ## Verify Insufficient Permissioons
@@ -258,13 +251,15 @@ Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
 Error description: Query processor error. Insufficient permissions, need {[(ns:$NS_SEC)r],} but only have {[(ns:public)clrud],[(ns:$NS_SEC)l],}.
 EOF
 
-iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
-diff test2.out test.expected
+iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" 2>&1  \
+  | grep -v "Failed query id:" > test.out \
+  || true
+diff test.out test.expected
 
-iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
-cat test.out | grep -v "Failed query id:" > test2.out || true
-diff test2.out test.expected
+iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" 2>&1  \
+  | grep -v "Failed query id:" > test.out \
+  || true
+diff test.out test.expected
 
 
 ## Use secure_scan
