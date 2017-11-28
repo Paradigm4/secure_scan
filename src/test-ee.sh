@@ -11,6 +11,7 @@ FLAG=access
 set -o errexit
 
 function cleanup {
+    echo "--- entering cleanup"
     ## Cleanup
     iquery -A auth_admin -anq "remove($NS_SEC.$DAT)"      || true
     iquery -A auth_admin -anq "drop_namespace('$NS_SEC')" || true
@@ -90,7 +91,7 @@ iquery -A auth_admin -aq "
 iquery -A auth_admin -aq "
     create temp array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 118
@@ -105,7 +106,7 @@ iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 123
@@ -121,7 +122,7 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id_WRONG=0:0;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 163
@@ -137,7 +138,7 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=0:1;${DIM}_WRONG=0:1];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 168
@@ -160,7 +161,7 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=$todd_id:$todd_id;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 244
@@ -203,7 +204,7 @@ grant todd 4 true
 
 ## 6. EXCEPTION: No permissions in the scanned array
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2> test.out                                              \
+    2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
 UserException in file: PhysicalSecureScan.cpp function: execute line: 239
@@ -250,10 +251,14 @@ Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
 Error description: Query processor error. Insufficient permissions, need {[(ns:$NS_SEC)r],} but only have {[(ns:public)clrud],[(ns:$NS_SEC)l],}.
 EOF
 
-iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
+iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" 2>&1  \
+  | grep -v "Failed query id:" > test.out \
+  || true
 diff test.out test.expected
 
-iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" > test.out 2>&1 || true
+iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" 2>&1  \
+  | grep -v "Failed query id:" > test.out \
+  || true
 diff test.out test.expected
 
 
@@ -359,5 +364,6 @@ val,i,j
 EOF
 diff test.out test.expected
 
+echo "### PASSED ALL TESTS"
 
 exit 0
