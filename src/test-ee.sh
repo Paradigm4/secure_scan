@@ -240,7 +240,7 @@ iquery -A auth_admin -o csv -aq "
                 <name:string>[user_id]) as U,
             D.user_id,
             U.user_id),
-        $DIM, $DIM)" | grep -v "Failed query id:" > test.out
+        $DIM, $DIM)" > test.out
 diff test.out test.expected
 
 
