@@ -53,7 +53,10 @@ all: libsecure_scan.so
 	@echo "Remember to copy the plugin to all your nodes in the cluster."
 libsecure_scan.so : $(OBJS)
 	$(CXX) $(CPPFLAGS) -o libsecure_scan.so $(OBJS) $(LIBS)
-test:
-	@./test.sh
+test: libsecure_scan.so
+	scidb.py stopall $(SCIDB_NAME)
+	cp libsecure_scan.so $(SCIDB)/lib/scidb/plugins/
+	scidb.py startall $(SCIDB_NAME)
+	@./test-ee.sh
 clean:
 	rm -f *.so *.o
