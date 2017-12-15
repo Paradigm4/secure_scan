@@ -87,8 +87,15 @@ class PhysicalSecureScan: public  PhysicalOperator
         return PhysicalBoundaries(lowBoundary, highBoundary);
     }
 
+
+    void inspectLogicalOp(LogicalOperator const& lop) override
+    {
+        LOG4CXX_DEBUG(logger, "secure_scan::inspectLogicalOp");
+        setControlCookie(lop.getInspectable());
+    }
+
     std::shared_ptr< Array> execute(std::vector< std::shared_ptr< Array> >& inputArrays,
-                                      std::shared_ptr<Query> query)
+                                    std::shared_ptr<Query> query)
     {
         SCIDB_ASSERT(!_arrayName.empty());
         SCIDB_ASSERT(_schema.getId() != 0);
@@ -102,6 +109,15 @@ class PhysicalSecureScan: public  PhysicalOperator
         std::string dataArrayName;
         std::string dataNSName;
         query->getNamespaceArrayNames(_arrayName, dataNSName, dataArrayName);
+
+        // Get data array
+        std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
+
+        LOG4CXX_DEBUG(logger, "secure_scan::getControlCookie:" << getControlCookie());
+        if (getControlCookie() == rbac::DBA_USER) {
+          // Do privileged stuff
+          return dataArray;
+        }
 
         // Get permissions array
         ArrayDesc permSchema;
@@ -245,9 +261,6 @@ class PhysicalSecureScan: public  PhysicalOperator
                 << "scanned array does not have a permission dimension";
         }
         dataSpatialRangesPtr->buildIndex();
-
-        // Get data array
-        std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
         // Add between for data array
         std::shared_ptr<Array> dataBetweenArray(

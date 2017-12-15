@@ -25,13 +25,16 @@
 
 #include <log4cxx/logger.h>
 #include <query/Operator.h>
+#include <rbac/NamespacesCommunicator.h>
 #include <rbac/Rights.h>
-#include <system/SystemCatalog.h>
+#include <rbac/Session.h>
 #include <system/Exceptions.h>
+#include <system/SystemCatalog.h>
 
 #include "settings.h"
 
 using namespace std;
+using namespace scidb::namespaces;
 
 namespace scidb
 {
@@ -69,6 +72,9 @@ namespace scidb
  */
 class LogicalSecureScan: public  LogicalOperator
 {
+private:
+    std::string _privInfo;
+
 public:
     LogicalSecureScan(const std::string& logicalName, const std::string& alias):
                     LogicalOperator(logicalName, alias)
@@ -133,6 +139,26 @@ public:
         SCIDB_ASSERT(resLock);
         SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);
 
+        // Check if user has scidbadmin role
+        if (query->getSession()->getUser().isDbAdmin()) {
+            // Easy case: it's scidbadmin.  May as well use the well-known DBA_USER
+            // string to signal that we have privs.
+            _privInfo = rbac::DBA_USER;
+        } else {
+            // Harder case: need to find out if they are assigned to the "admin" role.
+            // Make a temporary Rights object and check to see if we have the rights.
+            rbac::RightsMap neededRights;
+            neededRights.upsert(rbac::ET_DB, "", rbac::P_DB_ADMIN);
+            try {
+                scidb::namespaces::Communicator::checkAccess(query->getSession().get(),
+                                                             &neededRights);
+                _privInfo = rbac::DBA_USER;    // Succeeded, user must have the admin role.
+            } catch (...) {
+                // checkAccess threw, too bad for yew!
+            }
+        }
+        LOG4CXX_DEBUG(logger, "secure_scan::privInfo:" << _privInfo);
+
         query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
     }
 
@@ -167,6 +193,12 @@ public:
         SCIDB_ASSERT(schema.getDistribution()->getPartitioningSchema() != psUndefined);
 
         return schema;
+    }
+
+    std::string getInspectable() const override
+    {
+        LOG4CXX_DEBUG(logger, "secure_scan::getInspectable");
+        return _privInfo;
     }
 };
 
