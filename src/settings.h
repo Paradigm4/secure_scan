@@ -27,3 +27,4 @@
 #define PERM_ARRAY "dataset_id"
 #define USER_DIM   "user_id"
 #define PERM_DIM   "dataset_id"
+#define READ_PERM  "read"

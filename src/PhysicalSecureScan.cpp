@@ -112,9 +112,10 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Get data array
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
-        if (getControlCookie() == rbac::DBA_USER) {
+        if (getControlCookie() == rbac::DBA_USER ||
+            getControlCookie() == READ_PERM) {
           // Do privileged stuff
-          LOG4CXX_DEBUG(logger, "secure_scan::privileged user");
+          LOG4CXX_DEBUG(logger, "secure_scan::admin or read permission on namespace");
           return dataArray;
         }
 

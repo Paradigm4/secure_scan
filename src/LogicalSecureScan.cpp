@@ -194,6 +194,22 @@ public:
             }
         }
 
+        // Check if user has read access on the namespace
+        if (_privInfo != rbac::DBA_USER) { // only check if user does
+                                           // not have scidbadmin role
+            rbac::RightsMap neededRights;
+            neededRights.upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
+            try {
+                scidb::namespaces::Communicator::checkAccess(query->getSession().get(),
+                                                             &neededRights);
+                _privInfo = READ_PERM; // Succeeded, user must have
+                                       // the read permission on
+                                       // namespace.
+            } catch (...) {
+                // checkAccess threw, too bad for yew!
+            }
+        }
+
         return schema;
     }
 
