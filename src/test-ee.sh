@@ -341,6 +341,8 @@ val
 EOF
 diff test.out test.expected
 
+iquery -A auth_mike -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
+diff test.out test.expected
 
 ## Use secure_scan and op_count
 iquery -A auth_todd -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
