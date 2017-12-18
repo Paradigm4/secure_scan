@@ -90,7 +90,6 @@ class PhysicalSecureScan: public  PhysicalOperator
 
     void inspectLogicalOp(LogicalOperator const& lop) override
     {
-        LOG4CXX_DEBUG(logger, "secure_scan::inspectLogicalOp");
         setControlCookie(lop.getInspectable());
     }
 
@@ -113,9 +112,9 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Get data array
         std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
 
-        LOG4CXX_DEBUG(logger, "secure_scan::getControlCookie:" << getControlCookie());
         if (getControlCookie() == rbac::DBA_USER) {
           // Do privileged stuff
+          LOG4CXX_DEBUG(logger, "secure_scan::privileged user");
           return dataArray;
         }
 

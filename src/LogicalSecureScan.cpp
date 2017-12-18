@@ -193,14 +193,12 @@ public:
                 // checkAccess threw, too bad for yew!
             }
         }
-        LOG4CXX_DEBUG(logger, "secure_scan::privInfo:" << _privInfo);
 
         return schema;
     }
 
     std::string getInspectable() const override
     {
-        LOG4CXX_DEBUG(logger, "secure_scan::getInspectable");
         return _privInfo;
     }
 };
