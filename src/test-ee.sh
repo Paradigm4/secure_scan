@@ -143,7 +143,7 @@ iquery -A auth_admin -aq "
 iquery -A auth_admin -aq "
    set_role_permissions('todd', 'namespace', '$NS_SEC', 'l');
    set_role_permissions('gary', 'namespace', '$NS_SEC', 'l');
-   set_role_permissions('paul', 'namespace', '$NS_SEC', 'lr')"
+   set_role_permissions('paul', 'namespace', '$NS_SEC', 'r')"
 
 
 ## 1. EXCEPTION: Temp permissions array

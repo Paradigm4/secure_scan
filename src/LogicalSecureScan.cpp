@@ -139,7 +139,15 @@ public:
         SCIDB_ASSERT(resLock);
         SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);
 
-        query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
+        rbac::RightsMap neededRights;
+        neededRights.upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
+        try {
+          scidb::namespaces::Communicator::checkAccess(query->getSession().get(),
+                                                       &neededRights);
+          query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
+        } catch (...) {
+          query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_LIST);
+        }
     }
 
     ArrayDesc inferSchema(std::vector< ArrayDesc> inputSchemas, std::shared_ptr< Query> query)
