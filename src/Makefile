@@ -28,7 +28,7 @@ INC=-I. -DPROJECT_ROOT="\"$(SCIDB)\"" -I"$(SCIDB_THIRDPARTY_PREFIX)/3rdparty/boo
 LIBS=-shared -Wl,-soname,libsecure_scan.so -L. -L"$(SCIDB_THIRDPARTY_PREFIX)/3rdparty/boost/lib" -L"$(SCIDB)/lib" -Wl,-rpath,$(SCIDB)/lib:$(RPATH) -lm
 
 SRCS=plugin.cpp LogicalSecureScan.cpp PhysicalSecureScan.cpp
-FLAGS+=-std=c++11 -DCPP11
+FLAGS+=-std=c++14 -DCPP14
 
 # Compiler settings for SciDB version >= 15.7
 ifneq ("$(wildcard /usr/bin/g++-4.9)","")

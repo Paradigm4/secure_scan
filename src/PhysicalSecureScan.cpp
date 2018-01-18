@@ -110,7 +110,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         query->getNamespaceArrayNames(_arrayName, dataNSName, dataArrayName);
 
         // Get data array
-        std::shared_ptr<Array> dataArray(DBArray::newDBArray(_schema, query));
+        std::shared_ptr<Array> dataArray(DBArray::createDBArray(_schema, query));
 
         if (getControlCookie() == rbac::DBA_USER ||
             getControlCookie() == READ_PERM) {
@@ -143,7 +143,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         permSchema.setNamespaceName(args.nsName);
         LOG4CXX_DEBUG(logger, "secure_scan::permSchema:" << permSchema);
 
-        std::shared_ptr<Array> permArray(DBArray::newDBArray(permSchema, query));
+        std::shared_ptr<Array> permArray(DBArray::createDBArray(permSchema, query));
         LOG4CXX_DEBUG(logger, "secure_scan::permArray:" << permArray);
 
         // Set cooridnates for permissions array
