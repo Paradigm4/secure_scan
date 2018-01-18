@@ -27,12 +27,12 @@ function cleanup {
 
     iquery -A auth_admin -anq "drop_role('admin')"        || true
 
-    rm auth_admin \
-       auth_todd \
-       auth_gary \
-       auth_mike \
-       auth_paul \
-       auth_jack \
+    rm auth_admin    \
+       auth_todd     \
+       auth_gary     \
+       auth_mike     \
+       auth_paul     \
+       auth_jack     \
        test.expected \
        test.out
 }
@@ -150,10 +150,12 @@ iquery -A auth_admin -aq "
 iquery -A auth_admin -aq "
     create temp array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 134
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: temporary permissions arrays not supported.
 EOF
@@ -165,10 +167,12 @@ iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 139
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: auto-chunked permissions arrays not supported.
 EOF
@@ -181,10 +185,12 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id_WRONG=0:0;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 179
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have an user ID dimension.
 EOF
@@ -197,10 +203,12 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=0:1;${DIM}_WRONG=0:1];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 184
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have a permission dimension.
 EOF
@@ -220,10 +228,12 @@ iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=$todd_id:$todd_id;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 260
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: scanned array does not have a permission dimension.
 EOF
@@ -263,10 +273,12 @@ grant todd 4 true
 
 ## 6. EXCEPTION: No permissions in the scanned array
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 255
+UserException in file: PhysicalSecureScan.cpp function: execute
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: user has no permissions in the scanned array.
 EOF
@@ -305,28 +317,34 @@ diff test.out test.expected
 
 ## Verify Insufficient Permissioons
 cat <<EOF > test.expected
-UserException in file: src/namespaces/CheckAccess.cpp function: operator() line: 73
+UserException in file: src/namespaces/CheckAccess.cpp function: operator()
 Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
 Error description: Query processor error. Insufficient permissions, need {[(ns:$NS_SEC)r],} but only have {[(ns:public)clrud],[(ns:$NS_SEC)l],}.
 EOF
 
-iquery -A auth_todd -aq "scan($NS_SEC.$DAT)" 2>&1  \
-  | grep -v "Failed query id:" > test.out \
-  || true
+iquery -A auth_todd -aq "scan($NS_SEC.$DAT)"  \
+    2>&1                                      \
+    |  sed --expression='s/ line: [0-9]\+//g' \
+    >  test.out                               \
+    || true
 diff test.out test.expected
 
-iquery -A auth_gary -aq "scan($NS_SEC.$DAT)" 2>&1  \
-  | grep -v "Failed query id:" > test.out \
-  || true
+iquery -A auth_gary -aq "scan($NS_SEC.$DAT)"  \
+    2>&1                                      \
+    |  sed --expression='s/ line: [0-9]\+//g' \
+    >  test.out                               \
+    || true
 diff test.out test.expected
 
 
 ## 7. EXCEPTION: No list permission on the namespace
 iquery -A auth_jack -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
-    2>&1 | grep -v "Failed query id:" > test.out             \
+    2>&1                                                     \
+    |  sed --expression='s/ line: [0-9]\+//g'                \
+    >  test.out                                              \
     || true
 cat <<EOF > test.expected
-UserException in file: src/namespaces/CheckAccess.cpp function: operator() line: 73
+UserException in file: src/namespaces/CheckAccess.cpp function: operator()
 Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
 Error description: Query processor error. Insufficient permissions, need {[(ns:secured)l],} but only have {[(ns:public)clrud],}.
 EOF
