@@ -86,14 +86,6 @@ public:
         //   the array name will appear in _parameters.
         //   So the next parameter will be _parameters[1].
         ADD_PARAM_IN_ARRAY_NAME2(PLACEHOLDER_ARRAY_NAME_VERSION|PLACEHOLDER_ARRAY_NAME_INDEX_NAME);
-        ADD_PARAM_VARIES()
-    }
-
-    Placeholders nextVaryParamPlaceholder(const std::vector<ArrayDesc> &schemas)
-    {
-        Placeholders res;
-        res.push_back(END_OF_VARIES_PARAMS());
-        return res;
     }
 
     void inferAccess(std::shared_ptr<Query>& query) override
