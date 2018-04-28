@@ -209,13 +209,31 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Set cooridnates for data array
         Dimensions const& dataDims = _schema.getDimensions();
         size_t dataNDims = dataDims.size();
-        Coordinates dataCoordStart(dataNDims);
-        Coordinates dataCoordEnd(dataNDims);
+
+        // Get permission dimension ID
+        size_t dataDimPermIdx = 0;
+        hasPermDim = false;
+        for (size_t i = 0; i < dataNDims; i++)
+        {
+            if (dataDims[i].hasNameAndAlias(PERM_DIM))
+            {
+                dataDimPermIdx = i;
+                hasPermDim = true;
+                break;
+            }
+        }
+        if (!hasPermDim)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "scanned array does not have a permission dimension";
+        }
 
         // Build spatial range for data array
+        Coordinates dataCoordStart(dataNDims);
+        Coordinates dataCoordEnd(dataNDims);
+        bool is_first_time = true;
         SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
         shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
-        hasPermDim = false;
         while (!aiter->end())
         {
             ConstChunk const* chunk = &(aiter->getChunk());
@@ -228,37 +246,66 @@ class PhysicalSecureScan: public  PhysicalOperator
                 {
                     Coordinates const permCoord = citer->getPosition();
 
-                    for (size_t i = 0; i < dataNDims; i++)
+                    if (is_first_time)
                     {
-                        if (dataDims[i].hasNameAndAlias(PERM_DIM))
+                        // First time
+                        for (size_t i = 0; i < dataNDims; i++)
                         {
-                            hasPermDim = true;
-                            dataCoordStart[i] = permCoord[permDimPermIdx];
-                            dataCoordEnd[i] = permCoord[permDimPermIdx];
+                            if (i == dataDimPermIdx)
+                            {
+                                dataCoordStart[i] = permCoord[permDimPermIdx];
+                                dataCoordEnd[i] = permCoord[permDimPermIdx];
+                            }
+                            else
+                            {
+                                dataCoordStart[i] = dataDims[i].getStartMin();
+                                dataCoordEnd[i] = dataDims[i].getEndMax();
+                            }
+                            LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
+                            LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
+                        }
+                        is_first_time = false;
+                        // Do not create spatial range just yet
+                    }
+                    else
+                    {
+                        // Check if the previous and the curent
+                        // coordinates are sequential
+                        if (dataCoordEnd[dataDimPermIdx] + 1 == permCoord[permDimPermIdx])
+                        {
+                            // Just update the end
+                            ++dataCoordEnd[dataDimPermIdx];
+                            // Do not create spatial range just yet
                         }
                         else
                         {
-                            dataCoordStart[i] = dataDims[i].getStartMin();
-                            dataCoordEnd[i] = dataDims[i].getEndMax();
+                            // Coordiantes skip
+                            // Create spatial range for previous coordinate pair
+                            LOG4CXX_DEBUG(logger, "secure_scan::SpatialRange:" << dataCoordStart[dataDimPermIdx] << ","
+                                          << dataCoordEnd[dataDimPermIdx]);
+                            dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+                            // Update permission coordinate
+                            dataCoordStart[dataDimPermIdx] = permCoord[permDimPermIdx];
+                            dataCoordEnd[dataDimPermIdx] = permCoord[permDimPermIdx];
+                            // Do not create spatial range just yet
                         }
-                        LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
-                        LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
                     }
-                    dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
                 }
                 ++(*citer);
             }
             ++(*aiter);
         }
+        if (!is_first_time)
+        {
+            // Create spatial range from outstanding coordinate pair
+            LOG4CXX_DEBUG(logger, "secure_scan::SpatialRange:" << dataCoordStart[dataDimPermIdx] << ","
+                          << dataCoordEnd[dataDimPermIdx]);
+            dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+        }
         if (dataSpatialRangesPtr->ranges().size() == 0)
         {
             throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
                 << "user has no permissions in the scanned array";
-        }
-        if (!hasPermDim)
-        {
-            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
-                << "scanned array does not have a permission dimension";
         }
         dataSpatialRangesPtr->buildIndex();
 
