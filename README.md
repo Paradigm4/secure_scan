@@ -26,7 +26,7 @@ Put in the following
 
 ```sh
 SECURE_NMSP="secured"
-DATA_ARR="DATASET"
+DATA_ARRAY="DATASET"
 dimname="dataset_id"
 iquery -aq "create_namespace('$SECURE_NMSP')"
 iquery -aq "store(
@@ -92,7 +92,7 @@ iquery -aq "list('users')"
 We write the permissions to read the secure DATASET array in another namespace `PERMISSIONS`
 
 ```sh
-PERMISSIONS_NMSP='PERMISSIONS'
+PERMISSIONS_NMSP='permissions'
 iquery -aq "create_namespace('$PERMISSIONS_NMSP')"
 ```
 
@@ -116,8 +116,10 @@ give_user_access_at_dataset_id () {
              user_id, int64(id),
              $dimname, int64($2),
              $FLAG_NAME, true), $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY),
-    $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY)"
-} 
+     $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY);
+     set_role_permissions('$1', 'namespace', '$SECURE_NMSP', 'l')"
+
+}
 ```
 
 Now let us add permissions for some users
