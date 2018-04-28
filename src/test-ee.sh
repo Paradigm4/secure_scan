@@ -37,10 +37,13 @@ function cleanup {
        test.out
 }
 
-trap cleanup EXIT
+if [ "$1" != "debug" ]
+then
+    trap cleanup EXIT
+fi
 
 
-## Admin Auth
+echo "1. Admin Auth"
 cat <<EOF > auth_admin
 [security_password]
 user-name=scidbadmin
@@ -49,13 +52,13 @@ EOF
 chmod 0600 auth_admin
 
 
-## Create Namespaces
+echo "2. Create Namespaces"
 iquery -A auth_admin -aq "load_library('secure_scan')"
 iquery -A auth_admin -aq "create_namespace('$NS_SEC')"
 iquery -A auth_admin -aq "create_namespace('$NS_PER')"
 
 
-## Todd Auth
+echo "3. Todd Auth"
 cat <<EOF > auth_todd
 [security_password]
 user-name=todd
@@ -66,7 +69,7 @@ PWHASH=$(echo -n "bigsecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
 iquery -A auth_admin -aq "create_user('todd', '"$PWHASH"')"
 
 
-## Gary Auth
+echo "4. Gary Auth"
 cat <<EOF > auth_gary
 [security_password]
 user-name=gary
@@ -77,7 +80,7 @@ PWHASH=$(echo -n "topsecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
 iquery -A auth_admin -aq "create_user('gary', '"$PWHASH"')"
 
 
-## Mike Auth
+echo "5. Mike Auth"
 cat <<EOF > auth_mike
 [security_password]
 user-name=mike
@@ -91,7 +94,7 @@ iquery -A auth_admin -aq "
     add_user_to_role('mike', 'admin')"
 
 
-## Paul Auth
+echo "6. Paul Auth"
 cat <<EOF > auth_paul
 [security_password]
 user-name=paul
@@ -102,7 +105,7 @@ PWHASH=$(echo -n "mysecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
 iquery -A auth_admin -aq "create_user('paul', '"$PWHASH"')"
 
 
-## Jack Auth
+echo "7. Jack Auth"
 cat <<EOF > auth_jack
 [security_password]
 user-name=jack
@@ -113,7 +116,7 @@ PWHASH=$(echo -n "funsecret" | openssl dgst -sha512 -binary | base64 --wrap 0)
 iquery -A auth_admin -aq "create_user('jack', '"$PWHASH"')"
 
 
-## Verify Users
+echo "7. Verify Users"
 cat <<EOF > test.expected
 'scidbadmin'
 'todd'
@@ -132,21 +135,21 @@ iquery -A auth_admin -o csv -aq "show_users_in_role('admin')" > test.out
 diff test.out test.expected
 
 
-## Create Data Array
+echo "8. Create Data Array"
 iquery -A auth_admin -aq "
     store(
       build(<val:string>[$DIM=1:10:0:10], '${DAT}_' + string($DIM)),
       $NS_SEC.$DAT)"
 
 
-## Grant Namespace List Permission
+echo "9. Grant Namespace List Permission"
 iquery -A auth_admin -aq "
    set_role_permissions('todd', 'namespace', '$NS_SEC', 'l');
    set_role_permissions('gary', 'namespace', '$NS_SEC', 'l');
    set_role_permissions('paul', 'namespace', '$NS_SEC', 'r')"
 
 
-## 1. EXCEPTION: Temp permissions array
+echo "10. EXCEPTION: Temp permissions array"
 iquery -A auth_admin -aq "
     create temp array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
@@ -163,7 +166,7 @@ diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
-## 2. EXCEPTION: Empty permissions array
+echo "11. EXCEPTION: Empty permissions array"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10:0:10]"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
@@ -180,7 +183,7 @@ diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
-## 3. EXCEPTION: No "user_id" dimension in permissions array
+echo "12. EXCEPTION: No "user_id" dimension in permissions array"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id_WRONG=0:0;$DIM=0:0];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
@@ -198,7 +201,7 @@ diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
-## 4. EXCEPTION: No "dataset_id" dimension in permissions array
+echo "13. EXCEPTION: No "dataset_id" dimension in permissions array"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id=0:1;${DIM}_WRONG=0:1];
     store(build($NS_PER.$DIM, true), $NS_PER.$DIM)"
@@ -216,7 +219,7 @@ diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM)"
 
 
-## 5. EXCEPTION: No "dataset_id" dimension in data array
+echo "14. EXCEPTION: No "dataset_id" dimension in data array"
 iquery -A auth_admin -aq "remove($NS_SEC.$DAT)"
 iquery -A auth_admin -aq "
     store(
@@ -241,17 +244,17 @@ diff test.out test.expected
 iquery -A auth_admin -aq "remove($NS_PER.$DIM); remove($NS_SEC.$DAT)"
 
 
-## Create Permissions Array
+echo "15. Create Permissions Array"
 iquery -A auth_admin -aq "
     create array $NS_PER.$DIM <$FLAG:bool>[user_id;$DIM=1:10]"
 
 
-## Create Data Array
+echo "16. Create Data Array"
 iquery -A auth_admin -aq "
     create array $NS_SEC.$DAT <val:string>[$DIM=1:10:0:10]"
 
 
-## Gran Permissions
+echo "17. Gran Permissions"
 function grant () {
     iquery -A auth_admin -aq "
         insert(
@@ -271,7 +274,7 @@ grant todd 3 true
 grant todd 4 true
 
 
-## 6. EXCEPTION: No permissions in the scanned array
+echo "18. EXCEPTION: No permissions in the scanned array"
 iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1                                                     \
     |  sed --expression='s/ line: [0-9]\+//g'                \
@@ -285,13 +288,14 @@ EOF
 diff test.out test.expected
 
 
+echo "19. Gran Permissions"
 grant gary 2 true
 grant gary 3 true
 grant gary 4 false
 grant gary 5 true
 
 
-## Verify Permissions
+echo "20. Verify Permissions"
 cat <<EOF > test.expected
 true,'todd',1
 false,'todd',2
@@ -315,7 +319,7 @@ iquery -A auth_admin -o csv -aq "
 diff test.out test.expected
 
 
-## Verify Insufficient Permissioons
+echo "21. Verify Insufficient Permissioons"
 cat <<EOF > test.expected
 UserException in file: src/namespaces/CheckAccess.cpp function: operator()
 Error id: libnamespaces::SCIDB_SE_QPROC::NAMESPACE_E_INSUFFICIENT_PERMISSIONS
@@ -337,7 +341,7 @@ iquery -A auth_gary -aq "scan($NS_SEC.$DAT)"  \
 diff test.out test.expected
 
 
-## 7. EXCEPTION: No list permission on the namespace
+echo "22. EXCEPTION: No list permission on the namespace"
 iquery -A auth_jack -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1                                                     \
     |  sed --expression='s/ line: [0-9]\+//g'                \
@@ -351,7 +355,7 @@ EOF
 diff test.out test.expected
 
 
-## Use secure_scan
+echo "23. Use secure_scan"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
 cat <<EOF > test.expected
 val
@@ -365,14 +369,14 @@ EOF
 diff test.out test.expected
 
 
-## Populate data array
+echo "24. Populate data array"
 iquery -A auth_admin -aq "
     store(
       build(<val:string>[$DIM=1:10:0:10], '${DAT}_' + string($DIM)),
       $NS_SEC.$DAT)"
 
 
-## Use secure_scan
+echo "25. Use secure_scan"
 iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
 cat <<EOF > test.expected
 val
@@ -414,7 +418,7 @@ iquery -A auth_paul -o csv:l -aq "secure_scan($NS_SEC.$DAT)" > test.out
 diff test.out test.expected
 
 
-## Use secure_scan and op_count
+echo "26. Use secure_scan and op_count"
 iquery -A auth_todd -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
     > test.out
 cat <<EOF > test.expected
@@ -444,7 +448,7 @@ iquery -A auth_paul -o csv:l -aq "op_count(secure_scan($NS_SEC.$DAT))" \
 diff test.out test.expected
 
 
-## Use secure_scan and aggregate
+echo "27. Use secure_scan and aggregate"
 iquery -A auth_todd -o csv:l -aq "
     aggregate(secure_scan($NS_SEC.$DAT), max(val))" \
     > test.out
@@ -483,7 +487,7 @@ iquery -A auth_paul -o csv:l -aq "
 diff test.out test.expected
 
 
-## Use secure_scan and apply
+echo "28. Use secure_scan and apply"
 iquery -A auth_todd -o csv:l -aq "
     apply(secure_scan($NS_SEC.$DAT), i, dataset_id, j, val)" \
     > test.out
