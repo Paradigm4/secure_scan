@@ -1,14 +1,14 @@
-Infer access permissions from permissions array and enforce on a data array. 
+Infer access permissions from permissions array and enforce on a data array.
 
 # Summary
 
-For a quick-start to what this operator aims to achieve, jump [here](https://github.com/Paradigm4/secure_scan/blob/master/README.md#now-the-desired-behavior-of-secure_scan-operator). 
+For a quick-start to what this operator aims to achieve, jump [here](https://github.com/Paradigm4/secure_scan/blob/master/README.md#now-the-desired-behavior-of-secure_scan-operator).
 
-For a full description of how to set up the environment, read on below. 
+For a full description of how to set up the environment, read on below.
 
 # Setup
 
-The following will allow root scidb user to 
+The following will allow root scidb user to
 use `iquery -aq` instead of writing `iquery --auth-file=/PATH/TO/CREDS -aq`
 
 ```sh
@@ -26,12 +26,12 @@ Put in the following
 
 ```sh
 SECURE_NMSP="secured"
-DATA_ARR="DATASET"
+DATA_ARRAY="DATASET"
 dimname="dataset_id"
 iquery -aq "create_namespace('$SECURE_NMSP')"
 iquery -aq "store(
-              build(<name: string>[$dimname=0:3], 
-                   '[\'study 0\', \'study 1\', \'study 2\', \'study 3\']', true), 
+              build(<name: string>[$dimname=0:3],
+                   '[\'study 0\', \'study 1\', \'study 2\', \'study 3\']', true),
               $SECURE_NMSP.$DATA_ARRAY)"
 ```
 
@@ -92,7 +92,7 @@ iquery -aq "list('users')"
 We write the permissions to read the secure DATASET array in another namespace `PERMISSIONS`
 
 ```sh
-PERMISSIONS_NMSP='PERMISSIONS'
+PERMISSIONS_NMSP='permissions'
 iquery -aq "create_namespace('$PERMISSIONS_NMSP')"
 ```
 
@@ -104,7 +104,7 @@ FLAG_NAME="access_allowed"
 iquery -aq "create array $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY <$FLAG_NAME:bool>[user_id,$PERMISSIONS_ARRAY]"
 ```
 
-Note that we chose to have one dimension to have the same name as the array. 
+Note that we chose to have one dimension to have the same name as the array.
 
 Now let us create a function to add permissions for users at distinct datasets
 
@@ -112,12 +112,14 @@ Now let us create a function to add permissions for users at distinct datasets
 give_user_access_at_dataset_id () {
    iquery -aq "insert(
      redimension(
-       apply(project(filter(list('users'), name='$1'),id), 
-             user_id, int64(id), 
-             $dimname, int64($2), 
+       apply(project(filter(list('users'), name='$1'),id),
+             user_id, int64(id),
+             $dimname, int64($2),
              $FLAG_NAME, true), $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY),
-    $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY)"
-} 
+     $PERMISSIONS_NMSP.$PERMISSIONS_ARRAY);
+     set_role_permissions('$1', 'namespace', '$SECURE_NMSP', 'l')"
+
+}
 ```
 
 Now let us add permissions for some users
@@ -140,8 +142,8 @@ At this point, the permissions array should look like this
 
 ## Regular scan operator
 
-Since the users `Gary` and `Todd` have not explicitly been given permissions to the 
-secured namespace, they should not be able to see any data in DATASET using regular 
+Since the users `Gary` and `Todd` have not explicitly been given permissions to the
+secured namespace, they should not be able to see any data in DATASET using regular
 methods (more details [here](https://paradigm4.atlassian.net/wiki/spaces/ESD169/pages/50856054/Roles+and+Permissions)).
 
 ```sh
@@ -158,7 +160,7 @@ iquery --auth-file=/home/scidb/.scidb_gary_auth -aq "scan($SECURE_NMSP.$DATA_ARR
 
 ## `secure_scan` operator
 
-This operator should infer user permissions from the PERMISSIONS.dataset_id array and only show those rows. 
+This operator should infer user permissions from the PERMISSIONS.dataset_id array and only show those rows.
 
 **RECAP**
 
@@ -203,7 +205,7 @@ iquery --auth-file=/home/scidb/.scidb_todd_auth -aq "secure_scan($SECURE_NMSP.$D
 
 ## 1. Enforce one permissions array across multiple data arrays
 
-Above we enforced permissions for the dimension `dataset_id` in an array `secured.DATASET` using 
+Above we enforced permissions for the dimension `dataset_id` in an array `secured.DATASET` using
 permissions in `PERMISSIONS.dataset_id`.
 
 The permissions array will be reused to enforce permissions in other data arrays in the `secured`
@@ -212,7 +214,7 @@ namespace e.g. arrays like:
 ```sh
 VARIANT <reference_allele: string, ...>
       [dataset_id, dataset_version, variantset_id, biosample_id, feature_id, variant_synth_id]
-RNAQUANTIFICATION <value:float> 
+RNAQUANTIFICATION <value:float>
       [dataset_id, dataset_version, rnaquantificationset_id, biosample_id, feature_id]
 ```
 
@@ -227,7 +229,7 @@ PERMISSIONS.dataset_version <access_allowed:bool>[user_id, dataset_version]
 ```
 
 Then the `secure_scan` operator would enforce permissions for both dimensions in an array like
-`VARIANT` or `RNAQUANTIFICATION` above. 
+`VARIANT` or `RNAQUANTIFICATION` above.
 
 # Corner cases
 
