@@ -228,11 +228,8 @@ class PhysicalSecureScan: public  PhysicalOperator
                 << "scanned array does not have a permission dimension";
         }
 
-        // Build spatial range for data array
-        Coordinates dataCoordStart(dataNDims);
-        Coordinates dataCoordEnd(dataNDims);
-        bool is_first_time = true;
-        SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
+        // Collect permission coordinates
+        Coordinates permCoords;
         shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
         while (!aiter->end())
         {
@@ -245,57 +242,71 @@ class PhysicalSecureScan: public  PhysicalOperator
                 if (citer->getItem().getBool())
                 {
                     Coordinates const permCoord = citer->getPosition();
-
-                    if (is_first_time)
-                    {
-                        // First time
-                        for (size_t i = 0; i < dataNDims; i++)
-                        {
-                            if (i == dataDimPermIdx)
-                            {
-                                dataCoordStart[i] = permCoord[permDimPermIdx];
-                                dataCoordEnd[i] = permCoord[permDimPermIdx];
-                            }
-                            else
-                            {
-                                dataCoordStart[i] = dataDims[i].getStartMin();
-                                dataCoordEnd[i] = dataDims[i].getEndMax();
-                            }
-                            LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
-                            LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd[" << i << "]:" << dataCoordEnd[i]);
-                        }
-                        is_first_time = false;
-                        // Do not create spatial range just yet
-                    }
-                    else
-                    {
-                        // Check if the previous and the curent
-                        // coordinates are sequential
-                        if (dataCoordEnd[dataDimPermIdx] + 1 == permCoord[permDimPermIdx])
-                        {
-                            // Just update the end
-                            ++dataCoordEnd[dataDimPermIdx];
-                            // Do not create spatial range just yet
-                        }
-                        else
-                        {
-                            // Coordiantes skip
-                            // Create spatial range for previous coordinate pair
-                            LOG4CXX_DEBUG(logger, "secure_scan::SpatialRange:" << dataCoordStart[dataDimPermIdx] << ","
-                                          << dataCoordEnd[dataDimPermIdx]);
-                            dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
-                            // Update permission coordinate
-                            dataCoordStart[dataDimPermIdx] = permCoord[permDimPermIdx];
-                            dataCoordEnd[dataDimPermIdx] = permCoord[permDimPermIdx];
-                            // Do not create spatial range just yet
-                        }
-                    }
+                    permCoords.push_back(permCoord[permDimPermIdx]);
                 }
                 ++(*citer);
             }
             ++(*aiter);
         }
-        if (!is_first_time)
+
+        // Sort permission coordinates so we can collapse them
+        std::sort(permCoords.begin(), permCoords.end());
+
+        // Collapse permission coordinates and build spatial range for data array
+        Coordinates dataCoordStart(dataNDims);
+        Coordinates dataCoordEnd(dataNDims);
+        bool isFirstTime = true;
+        SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
+        for (Coordinates::iterator permCoordIter = permCoords.begin();
+             permCoordIter != permCoords.end();
+             ++permCoordIter)
+        {
+            if (isFirstTime)
+            {
+                // First time
+                for (size_t i = 0; i < dataNDims; i++)
+                {
+                    if (i == dataDimPermIdx)
+                    {
+                        dataCoordStart[i] = *permCoordIter;
+                        dataCoordEnd[i]   = *permCoordIter;
+                    }
+                    else
+                    {
+                        dataCoordStart[i] = dataDims[i].getStartMin();
+                        dataCoordEnd[i]   = dataDims[i].getEndMax();
+                    }
+                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordStart[" << i << "]:" << dataCoordStart[i]);
+                    LOG4CXX_DEBUG(logger, "secure_scan::dataCoordEnd["   << i << "]:" << dataCoordEnd[i]);
+                }
+                isFirstTime = false;
+                // Do not create spatial range just yet
+            }
+            else
+            {
+                // Check if the previous and the curent
+                // coordinates are sequential
+                if (dataCoordEnd[dataDimPermIdx] + 1 == *permCoordIter)
+                {
+                    // Just update the end
+                    ++dataCoordEnd[dataDimPermIdx];
+                    // Do not create spatial range just yet
+                }
+                else
+                {
+                    // Coordiantes skip
+                    // Create spatial range for previous coordinate pair
+                    LOG4CXX_DEBUG(logger, "secure_scan::SpatialRange:" << dataCoordStart[dataDimPermIdx] << ","
+                                  << dataCoordEnd[dataDimPermIdx]);
+                    dataSpatialRangesPtr->insert(SpatialRange(dataCoordStart, dataCoordEnd));
+                    // Update permission coordinate
+                    dataCoordStart[dataDimPermIdx] = *permCoordIter;
+                    dataCoordEnd[dataDimPermIdx]   = *permCoordIter;
+                    // Do not create spatial range just yet
+                }
+            }
+        }
+        if (!isFirstTime)
         {
             // Create spatial range from outstanding coordinate pair
             LOG4CXX_DEBUG(logger, "secure_scan::SpatialRange:" << dataCoordStart[dataDimPermIdx] << ","
