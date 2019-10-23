@@ -24,11 +24,13 @@
 */
 
 #include <log4cxx/logger.h>
-#include <query/Operator.h>
+#include <array/ArrayName.h>
+#include <query/LogicalOperator.h>
+#include <query/Query.h>
+#include <query/UserQueryException.h>
 #include <rbac/NamespacesCommunicator.h>
 #include <rbac/Rights.h>
 #include <rbac/Session.h>
-#include <system/Exceptions.h>
 #include <system/SystemCatalog.h>
 
 #include "settings.h"
@@ -79,24 +81,61 @@ public:
     LogicalSecureScan(const std::string& logicalName, const std::string& alias):
                     LogicalOperator(logicalName, alias)
     {
-        // - With ADD_PARAM_INPUT()
-        //   which is a typical way of providing an input array name,
-        //   the array name will NOT appear in _parameters.
-        // - With ADD_PARAM_IN_ARRAY_NAME2(),
-        //   the array name will appear in _parameters.
-        //   So the next parameter will be _parameters[1].
-        ADD_PARAM_IN_ARRAY_NAME2(PLACEHOLDER_ARRAY_NAME_VERSION|PLACEHOLDER_ARRAY_NAME_INDEX_NAME);
-        ADD_PARAM_VARIES()
     }
 
-    Placeholders nextVaryParamPlaceholder(const std::vector<ArrayDesc> &schemas)
+    static PlistSpec const* makePlistSpec()
     {
-        Placeholders res;
-        res.push_back(END_OF_VARIES_PARAMS());
-        return res;
+        static PlistSpec argSpec {
+            { "", // positionals
+              RE(RE::LIST, {
+                 RE(PP(PLACEHOLDER_ARRAY_NAME).setAllowVersions(true)),
+                 RE(RE::QMARK, {
+                    RE(PP(PLACEHOLDER_CONSTANT, TID_BOOL))
+                 })
+              })
+            }
+        };
+        return &argSpec;
     }
 
-    void inferAccess(std::shared_ptr<Query>& query) override
+    void inferAccess(const std::shared_ptr<Query>& query) override
+    {
+        LogicalOperator::inferAccess(query);
+
+        assert(!_parameters.empty());
+        assert(_parameters.front()->getParamType() == PARAM_ARRAY_REF);
+
+        const string& arrayNameOrig =
+            ((std::shared_ptr<OperatorParamReference>&)_parameters.front())->getObjectName();
+        SCIDB_ASSERT(isNameUnversioned(arrayNameOrig));
+
+        ArrayDesc srcDesc;
+        SystemCatalog::GetArrayDescArgs args;
+        query->getNamespaceArrayNames(arrayNameOrig, args.nsName, args.arrayName);
+        args.result = &srcDesc;
+        args.throwIfNotFound = true;
+        SystemCatalog::getInstance()->getArrayDesc(args);
+
+        if (srcDesc.isTransient())
+        {
+            std::shared_ptr<LockDesc> lock(
+                make_shared<LockDesc>(
+                    args.nsName,
+                    args.arrayName,
+                    query->getQueryID(),
+                    Cluster::getInstance()->getLocalInstanceId(),
+                    LockDesc::COORD,
+                    LockDesc::XCL));
+            std::shared_ptr<LockDesc> resLock(query->requestLock(lock));
+
+            SCIDB_ASSERT(resLock);
+            SCIDB_ASSERT(resLock->getLockMode() == LockDesc::XCL);
+        }
+
+        query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
+    }
+
+    void OldinferAccess(std::shared_ptr<Query>& query)
     {
         LogicalOperator::inferAccess(query);
 
@@ -106,7 +145,7 @@ public:
         const string& arrayNameOrig =
             ((std::shared_ptr<OperatorParamReference>&)
              _parameters.front())->getObjectName();
-        SCIDB_ASSERT(ArrayDesc::isNameUnversioned(arrayNameOrig));
+        SCIDB_ASSERT(isNameUnversioned(arrayNameOrig));
 
         ArrayDesc srcDesc;
         SystemCatalog::GetArrayDescArgs args;
@@ -177,8 +216,8 @@ public:
         schema.addAlias(arrayNameOrig);
         schema.setNamespaceName(args.nsName);
 
-        SCIDB_ASSERT(schema.getDistribution()->getPartitioningSchema() != psUninitialized);
-        SCIDB_ASSERT(schema.getDistribution()->getPartitioningSchema() != psUndefined);
+        SCIDB_ASSERT(not isUninitialized(schema.getDistribution()->getDistType()));
+        SCIDB_ASSERT(not isUndefined(schema.getDistribution()->getDistType()));
 
         // Check if user has scidbadmin role
         if (query->getSession()->getUser().isDbAdmin()) {

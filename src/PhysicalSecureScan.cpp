@@ -28,7 +28,8 @@
 #include <array/DBArray.h>
 #include <array/Dense1MChunkEstimator.h>
 #include <array/Metadata.h>
-#include <query/Operator.h>
+#include <query/PhysicalOperator.h>
+#include <query/LogicalOperator.h>
 #include <rbac/Session.h>
 #include <system/SystemCatalog.h>
 
@@ -58,20 +59,21 @@ class PhysicalSecureScan: public  PhysicalOperator
     {
         ArrayDistPtr arrDist = _schema.getDistribution();
         SCIDB_ASSERT(arrDist);
-        SCIDB_ASSERT(arrDist->getPartitioningSchema()!=psUninitialized);
+        SCIDB_ASSERT(not isUninitialized(_schema.getDistribution()->getDistType()));
         std::shared_ptr<Query> query(_query);
         SCIDB_ASSERT(query);
         if (query->isDistributionDegradedForRead(_schema)) {
             // make sure PhysicalSecureScan informs the optimizer that the distribution is unknown
-            SCIDB_ASSERT(arrDist->getPartitioningSchema()!=psUndefined);
+            SCIDB_ASSERT(not isUndefined(_schema.getDistribution()->getDistType()));
+
             //XXX TODO: psReplication declared as psUndefined would confuse SG because most of the data would collide.
             //XXX TODO: One option is to take the intersection between the array residency and the query live set
             //XXX TODO: (i.e. the default array residency) and advertize that as the new residency (with psReplicated)...
-            ASSERT_EXCEPTION((arrDist->getPartitioningSchema()!=psReplication),
+            ASSERT_EXCEPTION((_schema.getDistribution()->getDistType()!=dtReplication),
                              "Arrays with replicated distribution in degraded mode are not supported");
 
             // not  updating the schema, so that DBArray can succeed
-            return RedistributeContext(createDistribution(psUndefined),
+            return RedistributeContext(createDistribution(dtUndefined),
                                        _schema.getResidency());
         }
         return RedistributeContext(_schema.getDistribution(),
@@ -200,10 +202,10 @@ class PhysicalSecureScan: public  PhysicalOperator
         // Redistribute permissions array
         std::shared_ptr<Array> permRedistArray = redistributeToRandomAccess(
             permBetweenArray,
-            createDistribution(psReplication),
+            createDistribution(dtReplication),
             permSchema.getResidency(),
             query,
-            getShared(),
+            shared_from_this(),
             true);
 
         // Set cooridnates for data array
@@ -214,14 +216,13 @@ class PhysicalSecureScan: public  PhysicalOperator
 
         // Build spatial range for data array
         SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
-        shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
+        shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(permRedistArray->getArrayDesc().getAttributes().firstDataAttribute());
         hasPermDim = false;
         while (!aiter->end())
         {
             ConstChunk const* chunk = &(aiter->getChunk());
             shared_ptr<ConstChunkIterator> citer =
-                chunk->getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS
-                                        | ConstChunkIterator::IGNORE_EMPTY_CELLS);
+                chunk->getConstIterator(ConstChunkIterator::IGNORE_OVERLAPS);
             while (!citer->end())
             {
                 if (citer->getItem().getBool())
