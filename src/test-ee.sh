@@ -153,7 +153,7 @@ iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 134
+UserException in file: PhysicalSecureScan.cpp function: execute line: 136
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: temporary permissions arrays not supported.
 EOF
@@ -168,7 +168,7 @@ iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 139
+UserException in file: PhysicalSecureScan.cpp function: execute line: 141
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: auto-chunked permissions arrays not supported.
 EOF
@@ -184,7 +184,7 @@ iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 179
+UserException in file: PhysicalSecureScan.cpp function: execute line: 181
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have an user ID dimension.
 EOF
@@ -200,7 +200,7 @@ iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 184
+UserException in file: PhysicalSecureScan.cpp function: execute line: 186
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: permissions array does not have a permission dimension.
 EOF
@@ -223,7 +223,7 @@ iquery -A auth_todd -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 260
+UserException in file: PhysicalSecureScan.cpp function: execute line: 261
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: scanned array does not have a permission dimension.
 EOF
@@ -266,7 +266,7 @@ iquery -A auth_gary -o csv:l -aq "secure_scan($NS_SEC.$DAT)" \
     2>&1 | grep -v "Failed query id:" > test.out             \
     || true
 cat <<EOF > test.expected
-UserException in file: PhysicalSecureScan.cpp function: execute line: 255
+UserException in file: PhysicalSecureScan.cpp function: execute line: 256
 Error id: scidb::SCIDB_SE_OPERATOR::SCIDB_LE_ILLEGAL_OPERATION
 Error description: Operator error. Illegal operation: user has no permissions in the scanned array.
 EOF

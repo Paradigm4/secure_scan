@@ -101,43 +101,6 @@ public:
     {
         LogicalOperator::inferAccess(query);
 
-        assert(!_parameters.empty());
-        assert(_parameters.front()->getParamType() == PARAM_ARRAY_REF);
-
-        const string& arrayNameOrig =
-            ((std::shared_ptr<OperatorParamReference>&)_parameters.front())->getObjectName();
-        SCIDB_ASSERT(isNameUnversioned(arrayNameOrig));
-
-        ArrayDesc srcDesc;
-        SystemCatalog::GetArrayDescArgs args;
-        query->getNamespaceArrayNames(arrayNameOrig, args.nsName, args.arrayName);
-        args.result = &srcDesc;
-        args.throwIfNotFound = true;
-        SystemCatalog::getInstance()->getArrayDesc(args);
-
-        if (srcDesc.isTransient())
-        {
-            std::shared_ptr<LockDesc> lock(
-                make_shared<LockDesc>(
-                    args.nsName,
-                    args.arrayName,
-                    query->getQueryID(),
-                    Cluster::getInstance()->getLocalInstanceId(),
-                    LockDesc::COORD,
-                    LockDesc::XCL));
-            std::shared_ptr<LockDesc> resLock(query->requestLock(lock));
-
-            SCIDB_ASSERT(resLock);
-            SCIDB_ASSERT(resLock->getLockMode() == LockDesc::XCL);
-        }
-
-        query->getRights()->upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
-    }
-
-    void OldinferAccess(std::shared_ptr<Query>& query)
-    {
-        LogicalOperator::inferAccess(query);
-
         SCIDB_ASSERT(!_parameters.empty());
         SCIDB_ASSERT(_parameters.front()->getParamType() == PARAM_ARRAY_REF);
 

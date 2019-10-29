@@ -126,7 +126,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         SystemCatalog::GetArrayDescArgs args;
         args.nsName = PERM_NS;
         args.arrayName = PERM_ARRAY;
-        args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
+
         args.versionId = LAST_VERSION;
         args.throwIfNotFound = true;
         args.result = &permSchema;
