@@ -30,12 +30,11 @@
 #include <array/Metadata.h>
 #include <query/PhysicalOperator.h>
 #include <query/LogicalOperator.h>
-#include <query/ops/between/BetweenArray.h>
 #include <rbac/Session.h>
 #include <system/SystemCatalog.h>
 
 #include "settings.h"
-// #include "BetweenArray.h"
+#include "BetweenArray.h"
 
 using namespace std;
 
