@@ -27,6 +27,7 @@
 #include <array/ArrayName.h>
 #include <query/LogicalOperator.h>
 #include <query/Query.h>
+#include <query/UserQueryException.h>
 #include <rbac/NamespacesCommunicator.h>
 #include <rbac/Rights.h>
 #include <rbac/Session.h>
