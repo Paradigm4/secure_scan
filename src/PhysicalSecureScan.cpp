@@ -237,6 +237,24 @@ class PhysicalSecureScan: public  PhysicalOperator
         SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
         shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(permRedistArray->getArrayDesc().getAttributes().firstDataAttribute());
         hasPermDim = false;
+        for (size_t i = 0; i < dataNDims; i++)
+        {
+            if (dataDims[i].hasNameAndAlias(PERM_DIM))
+            {
+                dataDimPermIdx = i;
+                hasPermDim = true;
+                break;
+            }
+        }
+        if (!hasPermDim)
+        {
+            throw USER_EXCEPTION(SCIDB_SE_OPERATOR, SCIDB_LE_ILLEGAL_OPERATION)
+                << "scanned array does not have a permission dimension";
+        }
+
+        // Collect permission coordinates
+        Coordinates permCoords;
+        shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
         while (!aiter->end())
         {
             ConstChunk const* chunk = &(aiter->getChunk());
