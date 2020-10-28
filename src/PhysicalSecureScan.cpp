@@ -254,7 +254,6 @@ class PhysicalSecureScan: public  PhysicalOperator
 
         // Collect permission coordinates
         Coordinates permCoords;
-        shared_ptr<ConstArrayIterator> aiter = permRedistArray->getConstIterator(0);
         while (!aiter->end())
         {
             ConstChunk const* chunk = &(aiter->getChunk());
@@ -276,10 +275,7 @@ class PhysicalSecureScan: public  PhysicalOperator
         std::sort(permCoords.begin(), permCoords.end());
 
         // Collapse permission coordinates and build spatial range for data array
-        Coordinates dataCoordStart(dataNDims);
-        Coordinates dataCoordEnd(dataNDims);
         bool isFirstTime = true;
-        SpatialRangesPtr dataSpatialRangesPtr = make_shared<SpatialRanges>(dataNDims);
         for (Coordinates::iterator permCoordIter = permCoords.begin();
              permCoordIter != permCoords.end();
              ++permCoordIter)

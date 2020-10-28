@@ -27,11 +27,11 @@
 #include <array/ArrayName.h>
 #include <query/LogicalOperator.h>
 #include <query/Query.h>
+#include <query/Transaction.h>
 #include <query/UserQueryException.h>
 #include <rbac/NamespacesCommunicator.h>
 #include <rbac/Rights.h>
 #include <rbac/Session.h>
-#include <system/SystemCatalog.h>
 
 #include "settings.h"
 
@@ -128,7 +128,16 @@ public:
                 << "auto-chunked arrays not supported";
         }
 
-        const LockDesc::LockMode lockMode = LockDesc::RD;
+        auto lock = LockDesc::create(
+                                     PERM_NS,
+                                     PERM_ARRAY,
+                                     query->getTxn(),
+                                     LockDesc::COORD,
+                                     LockDesc::RD);
+        std::shared_ptr<LockDesc> resLock = query->getTxn().requestLock(lock);
+        SCIDB_ASSERT(resLock);
+        SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);
+        /*        const LockDesc::LockMode lockMode = LockDesc::RD;
         std::shared_ptr<LockDesc>  lock(
             make_shared<LockDesc>(
                 PERM_NS,
@@ -137,9 +146,9 @@ public:
                 Cluster::getInstance()->getLocalInstanceId(),
                 LockDesc::COORD,
                 lockMode));
-        std::shared_ptr<LockDesc> resLock = query->requestLock(lock);
+        std::shared_ptr<LockDesc> resLock = query->getTxn().requestLock(lock);
         SCIDB_ASSERT(resLock);
-        SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);
+        SCIDB_ASSERT(resLock->getLockMode() >= LockDesc::RD);*/
 
         rbac::RightsMap neededRights;
         neededRights.upsert(rbac::ET_NAMESPACE, args.nsName, rbac::P_NS_READ);
@@ -170,7 +179,7 @@ public:
 
         SystemCatalog::GetArrayDescArgs args;
         query->getNamespaceArrayNames(arrayNameOrig, args.nsName, args.arrayName);
-        args.catalogVersion = query->getCatalogVersion(args.nsName, args.arrayName);
+        args.catalogVersion = query->getTxn().getCatalogVersion(args.nsName, args.arrayName);
         args.versionId = arrayRef->getVersion();
         args.throwIfNotFound = true;
         args.result = &schema;
